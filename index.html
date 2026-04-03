@@ -234,31 +234,39 @@ tbody tr.row-dup td.sp::after{content:' ⚠';color:var(--red);font-size:11px;}
 @media(max-width:900px){.layout{grid-template-columns:1fr;}.panel-left{border-right:none;border-bottom:1px solid var(--border2);max-height:none;}.panel-right{max-height:none;}}
 
 @media(max-width:600px){
-  /* データ一覧タブの高さをスマホ向けに修正 */
-  #tab-list > div {
-    height:auto !important;
-    overflow:visible !important;
-    min-height:0;
-  }
-  .table-wrap{
-    overflow-x:auto;
-    overflow-y:auto;
-    height:60vh !important;
-    min-height:300px;
-    max-height:none;
-  }
-  /* ヘッダーとタブをコンパクトに */
   .header{padding:8px 12px;}
   .header-title{font-size:17px;letter-spacing:2px;}
   .header-sub{display:none;}
   .tab-btn{padding:8px 10px;font-size:11px;letter-spacing:0;}
-  /* 統計バーをコンパクトに */
   .stats-bar{gap:8px;padding:7px 10px;flex-wrap:wrap;}
   .sv{font-size:16px;}
   .sl{font-size:9px;}
-  /* ボタンバーをコンパクトに */
   .bulk-bar{padding:6px 8px;gap:5px;}
   .bulk-bar .btn{padding:6px 10px;font-size:11px;}
+
+  /* データ一覧タブを画面いっぱいに使う縦固定レイアウト */
+  #tab-list > div {
+    height:calc(100vh - 90px) !important;
+    overflow:hidden !important;
+    display:flex !important;
+    flex-direction:column !important;
+    padding:8px !important;
+  }
+
+  /* テーブルラッパーが残り高さをすべて使いスクロール */
+  .table-wrap{
+    flex:1 !important;
+    min-height:0 !important;
+    overflow-x:auto !important;
+    overflow-y:auto !important;
+  }
+
+  /* theadを固定 */
+  thead{
+    position:sticky !important;
+    top:0 !important;
+    z-index:10 !important;
+  }
 }
 </style>
 </head>
