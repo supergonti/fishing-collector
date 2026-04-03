@@ -150,7 +150,7 @@ td:last-child{border-right:none;}
 td.sp{font-weight:700;color:var(--text);}
 td.sz{font-family:'Bebas Neue',sans-serif;font-size:15px;color:var(--red);letter-spacing:1px;}
 td.wt{font-family:'Bebas Neue',sans-serif;font-size:13px;color:var(--gold);}
-td.dt{font-size:11px;color:var(--text3);}
+td.dt{font-size:11px;color:var(--text3);white-space:nowrap;width:54px;min-width:54px;}
 .del-btn{text-align:center;padding:4px;}
 .del{background:none;border:none;cursor:pointer;color:var(--border);font-size:13px;padding:2px 6px;border-radius:4px;}
 .del:hover{color:var(--red);background:rgba(192,57,43,.08);}
@@ -280,13 +280,13 @@ thead{
 
 <!-- TAB NAV -->
 <div class="tab-nav">
-  <button class="tab-btn active" onclick="switchTab('analyze')">📷 解析して追加</button>
+  <button class="tab-btn active" onclick="switchTab('list')">📋 データ一覧</button>
+  <button class="tab-btn" onclick="switchTab('analyze')">📷 解析して追加</button>
   <button class="tab-btn" onclick="switchTab('manual')">✏️ 手動入力</button>
-  <button class="tab-btn" onclick="switchTab('list')">📋 データ一覧</button>
 </div>
 
 <!-- ===== TAB: ANALYZE ===== -->
-<div class="tab-content active" id="tab-analyze">
+<div class="tab-content" id="tab-analyze">
 <div class="layout">
 <div class="panel-left">
 
@@ -410,7 +410,7 @@ thead{
 </div>
 
 <!-- ===== TAB: LIST ===== -->
-<div class="tab-content" id="tab-list">
+<div class="tab-content active" id="tab-list">
 <div style="padding:8px;display:flex;flex-direction:column;height:calc(100vh - 102px);overflow:hidden;">
 
   <!-- 折りたたみトグルボタン -->
@@ -459,8 +459,8 @@ thead{
     <table id="main-table" style="display:none;">
       <thead><tr>
         <th class="chk-col"><input type="checkbox" class="row-chk" id="chk-all" onchange="toggleAllRows(this.checked)" title="全選択"></th>
-        <th class="sort-th" id="th-date" onclick="setSort('date')">投稿日時<span class="sort-arrow" id="arr-date"></span></th>
-        <th class="sort-th" id="th-species" onclick="setSort('species')">魚種<span class="sort-arrow" id="arr-species"></span></th>
+        <th class="sort-th" id="th-date" onclick="setSort('date')" style="width:54px;min-width:54px;">投稿日<span class="sort-arrow" id="arr-date"></span></th>
+        <th class="sort-th" id="th-species" onclick="setSort('species')" style="width:80px;min-width:80px;">魚種<span class="sort-arrow" id="arr-species"></span></th>
         <th class="sort-th" id="th-size" onclick="setSort('size_cm')">cm<span class="sort-arrow" id="arr-size_cm"></span></th>
         <th class="sort-th" id="th-weight" onclick="setSort('weight_kg')">kg<span class="sort-arrow" id="arr-weight_kg"></span></th>
         <th>本</th><th>エサ</th><th>釣法</th><th>ポイント</th><th>潮</th><th>天気</th>
@@ -646,7 +646,7 @@ const now=new Date();
 function switchTab(t){
   document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-  const tabs=['analyze','manual','list'];
+  const tabs=['list','analyze','manual'];
   const idx=tabs.indexOf(t);
   if(idx>=0) document.querySelectorAll('.tab-btn')[idx].classList.add('active');
   document.getElementById('tab-'+t).classList.add('active');
@@ -1155,8 +1155,8 @@ function renderTable(){
     const chk = selectedIds.has(r.id);
     return `<tr class="${dup?'dup-row':''}" id="tr-${r.id}">
       <td class="chk-col"><input type="checkbox" class="row-chk" ${chk?'checked':''} onchange="toggleRow(${r.id},this.checked)"></td>
-      <td class="dt">${r.date||''}<br>${r.time||''}</td>
-      <td class="sp">${r.species||''}${dup?'<span class="dup-icon" title="重複の可能性あり">⚠️</span>':''}</td>
+      <td class="dt">${r.date ? r.date.slice(2).replace(/-/g,'/') : '—'}</td>
+      <td class="sp" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.species||''}">${r.species ? r.species.slice(0,7) : ''}${dup?'<span class="dup-icon" title="重複の可能性あり">⚠️</span>':''}</td>
       <td class="sz">${r.size_cm||'—'}</td>
       <td class="wt">${r.weight_kg||'—'}</td>
       <td>${r.count||1}</td>
