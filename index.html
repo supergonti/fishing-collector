@@ -486,6 +486,44 @@ function load(){ try{ records=JSON.parse(localStorage.getItem(KEY))||[]; }catch{
 function persist(){ localStorage.setItem(KEY,JSON.stringify(records)); refreshCount(); }
 load();
 
+// ===== GitHub data.csv 自動読み込み =====
+const CSV_URL = 'data.csv';
+function loadCSVfromGitHub(){
+  // localStorageに既にデータがある場合はスキップ
+  if(records.length > 0) return;
+  fetch(CSV_URL + '?t=' + Date.now())
+    .then(r => { if(!r.ok) throw new Error('CSV not found'); return r.text(); })
+    .then(text => {
+      const cleaned = text.replace(/^\uFEFF/,'');
+      const lines = cleaned.split('\n').filter(l => l.trim());
+      if(lines.length < 2) return;
+      const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+      let added = 0;
+      for(let i = 1; i < lines.length; i++){
+        const vals = parseCSVLine(lines[i]);
+        const obj = {}; headers.forEach((h,idx) => { obj[h] = (vals[idx]||'').replace(/^"|"$/g,''); });
+        const r = {
+          id: Date.now()+i, date:obj.date||'', time:obj.time||'', species:obj.species||'',
+          size_cm:parseFloat(obj.size_cm)||'', weight_kg:parseFloat(obj.weight_kg)||'',
+          count:parseInt(obj.count)||1, bait:obj.bait||'', method:obj.method||'',
+          spot:obj.spot||'', tide:obj.tide||'', weather:obj.weather||'',
+          temp:parseFloat(obj.temp)||'', water_temp:parseFloat(obj.water_temp)||'',
+          wind:parseFloat(obj.wind)||'', memo:obj.memo||'', source:obj.source||'インポート',
+        };
+        if(r.species){ records.push(r); added++; }
+      }
+      if(added > 0){
+        persist(); renderTable(); updateStats();
+        toast(`✓ data.csv から ${added}件を読み込みました`);
+      }
+    })
+    .catch(() => { /* data.csvがない場合は何もしない */ });
+}
+// DOMロード後に実行
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(loadCSVfromGitHub, 300);
+});
+
 function pad(n){ return String(n).padStart(2,'0'); }
 
 let ssDatetimeOverride = null; // ファイル選択時に上書き
