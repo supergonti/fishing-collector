@@ -231,6 +231,10 @@ tbody tr.row-dup td.sp::after{content:' ⚠';color:var(--red);font-size:11px;}
 .entered-dt{font-size:10px;color:var(--text3);}
 .btn-dup:hover{border-color:var(--gold);color:var(--gold);background:rgba(184,150,62,.05);}
 
+/* 折りたたみトグルボタン */
+.list-toggle-btn{width:100%;background:var(--sea2);border:1px solid rgba(184,150,62,0.3);border-radius:6px;padding:8px 14px;color:var(--gold2);font-family:'Noto Sans JP',sans-serif;font-size:12px;cursor:pointer;text-align:left;margin-bottom:4px;letter-spacing:1px;}
+.list-toggle-btn:hover{background:#1e4d75;}
+
 @media(max-width:900px){.layout{grid-template-columns:1fr;}.panel-left{border-right:none;border-bottom:1px solid var(--border2);max-height:none;}.panel-right{max-height:none;}}
 
 /* 全端末共通：テーブルを20行分の高さで固定しheadを固定・bodyをスクロール */
@@ -407,38 +411,48 @@ thead{
 
 <!-- ===== TAB: LIST ===== -->
 <div class="tab-content" id="tab-list">
-<div style="padding:18px;display:flex;flex-direction:column;height:calc(100vh - 102px);overflow:hidden;">
-  <div class="stats-bar">
-    <div><div class="sv" id="s-count">0</div><div class="sl">件数</div></div>
-    <div><div class="sv" id="s-species">0</div><div class="sl">魚種数</div></div>
-    <div><div class="sv" id="s-max">—</div><div class="sl">最大サイズ</div></div>
-    <div><div class="sv" id="s-maxw">—</div><div class="sl">最大重量</div></div>
-    <div style="margin-left:auto;"><div class="sv" id="s-ig">0</div><div class="sl">Instagram</div></div>
-    <div><div class="sv" id="s-man">0</div><div class="sl">手動入力</div></div>
-  </div>
+<div style="padding:8px;display:flex;flex-direction:column;height:calc(100vh - 102px);overflow:hidden;">
 
-  <!-- 重複警告バナー -->
-  <div class="dup-banner" id="dup-banner"></div>
+  <!-- 折りたたみトグルボタン -->
+  <button class="list-toggle-btn" id="list-toggle-btn" onclick="toggleListPanel()">
+    <span id="list-toggle-label">▼ 統計・操作パネルを表示</span>
+    <span style="font-size:11px;color:rgba(255,255,255,0.5);margin-left:8px;" id="list-count-mini"></span>
+  </button>
 
-  <!-- 操作バー -->
-  <div class="bulk-bar">
-    <div class="bulk-info"><b id="sel-row-count">0</b> 件選択中</div>
-    <button class="btn-del-sel" id="btn-del-sel" onclick="deleteSelected()" disabled>🗑 選択削除</button>
-    <button class="btn-sel-none" onclick="clearRowSelection()">選択解除</button>
-    <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
-      <button class="btn btn-import" onclick="document.getElementById('csv-imp').click()">📂 CSV読込</button>
-      <input type="file" id="csv-imp" accept=".csv" style="display:none" onchange="importCSV(event)">
-      <button class="btn btn-csv" onclick="exportCSV()">📥 CSVで保存</button>
-      <button class="btn btn-danger" onclick="clearAll()">全削除</button>
+  <!-- 折りたたみパネル（初期状態：非表示） -->
+  <div id="list-collapsible" style="display:none;">
+    <div class="stats-bar" style="margin-top:6px;">
+      <div><div class="sv" id="s-count">0</div><div class="sl">件数</div></div>
+      <div><div class="sv" id="s-species">0</div><div class="sl">魚種数</div></div>
+      <div><div class="sv" id="s-max">—</div><div class="sl">最大サイズ</div></div>
+      <div><div class="sv" id="s-maxw">—</div><div class="sl">最大重量</div></div>
+      <div style="margin-left:auto;"><div class="sv" id="s-ig">0</div><div class="sl">Instagram</div></div>
+      <div><div class="sv" id="s-man">0</div><div class="sl">手動入力</div></div>
     </div>
-  </div>
 
-  <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <input type="text" class="filter-in" id="filter-q" placeholder="🔍 キーワード絞り込み" oninput="renderTable()" style="width:200px;">
-    <select class="species-sel" id="species-filter" onchange="renderTable()">
-      <option value="">🐟 全魚種</option>
-    </select>
-    <button class="btn-sel-none" onclick="resetSort()" title="ソートをリセット">↺ 並順リセット</button>
+    <!-- 重複警告バナー -->
+    <div class="dup-banner" id="dup-banner"></div>
+
+    <!-- 操作バー -->
+    <div class="bulk-bar">
+      <div class="bulk-info"><b id="sel-row-count">0</b> 件選択中</div>
+      <button class="btn-del-sel" id="btn-del-sel" onclick="deleteSelected()" disabled>🗑 選択削除</button>
+      <button class="btn-sel-none" onclick="clearRowSelection()">選択解除</button>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-import" onclick="document.getElementById('csv-imp').click()">📂 CSV読込</button>
+        <input type="file" id="csv-imp" accept=".csv" style="display:none" onchange="importCSV(event)">
+        <button class="btn btn-csv" onclick="exportCSV()">📥 CSVで保存</button>
+        <button class="btn btn-danger" onclick="clearAll()">全削除</button>
+      </div>
+    </div>
+
+    <div style="margin-bottom:6px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <input type="text" class="filter-in" id="filter-q" placeholder="🔍 キーワード絞り込み" oninput="renderTable()" style="width:180px;">
+      <select class="species-sel" id="species-filter" onchange="renderTable()">
+        <option value="">🐟 全魚種</option>
+      </select>
+      <button class="btn-sel-none" onclick="resetSort()" title="ソートをリセット">↺ 並順リセット</button>
+    </div>
   </div>
 
   <div class="table-wrap">
@@ -1269,8 +1283,6 @@ function updateStats(){
   document.getElementById('s-man').textContent=manCount;
 }
 
-function refreshCount(){ document.getElementById('hcount').textContent=records.length; }
-
 // ===== CSV =====
 function exportCSV(){
   if(!records.length){ toast('データがありません'); return; }
@@ -1341,6 +1353,21 @@ function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+function toggleListPanel(){
+  const panel = document.getElementById('list-collapsible');
+  const label = document.getElementById('list-toggle-label');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  label.textContent = isOpen ? '▼ 統計・操作パネルを表示' : '▲ 統計・操作パネルを閉じる';
+}
+
+// refreshCountをオーバーライドしてミニ件数も更新
+function refreshCount(){
+  document.getElementById('hcount').textContent = records.length;
+  const mini = document.getElementById('list-count-mini');
+  if(mini) mini.textContent = records.length + '件';
 }
 
 refreshCount();
