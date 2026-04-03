@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>釣果データ収集ツール V5.3</title>
+<title>釣果データ収集ツール V5.4</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Noto+Sans+JP:wght@300;400;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -521,16 +521,64 @@ thead{
 </div>
 
 <script>
-const KEY='fishing_v2';
-let records=[];
-let selMM='';
-let queue=[];
+// ===== STORAGE =====
+const KEY = 'fishing_v2';
+let records = [];
+let selMM = '';
+let queue = [];
 
-function load(){ try{ records=JSON.parse(localStorage.getItem(KEY))||[]; }catch{ records=[]; } }
-function persist(){ localStorage.setItem(KEY,JSON.stringify(records)); refreshCount(); }
+function load(){
+  try { records = JSON.parse(localStorage.getItem(KEY)) || []; }
+  catch { records = []; }
+}
+function persist(){
+  localStorage.setItem(KEY, JSON.stringify(records));
+  refreshCount();
+}
 load();
 
-function pad(n){ return String(n).padStart(2,'0'); }
+function pad(n){ return String(n).padStart(2, '0'); }
+
+// ===== ID生成（衝突防止） =====
+let _idCounter = 0;
+function genId(){ return Date.now() * 1000 + (_idCounter++ % 1000); }
+
+// ===== レコード生成の共通ファクトリ =====
+function makeRecord(src, source){
+  return {
+    id:         genId(),
+    date:       src.date       || '',
+    time:       src.time       || '',
+    species:    src.species    || '',
+    size_cm:    parseFloat(src.size_cm)   || '',
+    weight_kg:  parseFloat(src.weight_kg) || '',
+    count:      parseInt(src.count)       || 1,
+    bait:       src.bait       || '',
+    method:     src.method     || '',
+    spot:       src.spot       || '',
+    tide:       src.tide       || '',
+    weather:    src.weather    || '',
+    temp:       parseFloat(src.temp)       || '',
+    water_temp: parseFloat(src.water_temp) || '',
+    wind:       parseFloat(src.wind)       || '',
+    memo:       src.memo       || '',
+    source:     source         || src.source || 'インポート',
+    entered_at: new Date().toISOString(),
+  };
+}
+
+// ===== フィルタの共通化 =====
+function getFilteredList(){
+  const q  = (document.getElementById('filter-q').value || '').toLowerCase();
+  const sf = (document.getElementById('species-filter') || {}).value || '';
+  return records.filter(r => {
+    const kw = !q || (r.species||'').toLowerCase().includes(q)
+                  || (r.spot||'').toLowerCase().includes(q)
+                  || (r.bait||'').toLowerCase().includes(q);
+    const sp = !sf || r.species === sf;
+    return kw && sp;
+  });
+}
 
 let ssDatetimeOverride = null; // ファイル選択時に上書き
 let ssFilenames = []; // 選択ファイル名リスト
@@ -909,43 +957,23 @@ function updateSelCount(){
 }
 
 function addSelected(){
-  const selected=queue.filter(item=>item._checked);
+  const selected = queue.filter(item => item._checked);
   if(!selected.length){ toast('1件以上選択してください'); return; }
-  let added=0;
-  selected.forEach((item,i)=>{
+  let added = 0;
+  selected.forEach((item, i) => {
     if(!item.species) return;
-    records.unshift({
-      id: Date.now()+i,
-      date: item.date||'',
-      time: item.time||'',
-      species: item.species||'',
-      size_cm: item.size_cm>0?item.size_cm:'',
-      weight_kg: item.weight_kg>0?item.weight_kg:'',
-      count: item.count||1,
-      bait: item.bait||'',
-      method: item.method||'',
-      spot: item.spot||'',
-      tide: item.tide||'',
-      weather: item.weather||'',
-      temp: item.temp>0?item.temp:'',
-      water_temp: item.water_temp>0?item.water_temp:'',
-      wind: item.wind>0?item.wind:'',
-      memo: item.memo||'',
-      source: 'Instagram',
-      entered_at: new Date().toISOString(),
-    });
+    records.unshift(makeRecord(item, 'Instagram'));
     added++;
   });
   persist();
   toast(`✓ ${added}件をリストに追加しました！`);
-  // 追加済みをキューから除去
-  queue=queue.filter(item=>!item._checked);
-  if(queue.length===0){
-    document.getElementById('queue-wrap').style.display='none';
-    showParseResult(true,`✓ 全件追加しました。「データ一覧」タブで確認できます。`);
+  queue = queue.filter(item => !item._checked);
+  if(queue.length === 0){
+    document.getElementById('queue-wrap').style.display = 'none';
+    showParseResult(true, `✓ 全件追加しました。「データ一覧」タブで確認できます。`);
   } else {
     renderQueue();
-    showParseResult(true,`✓ ${added}件を追加しました。残り${queue.length}件が選択可能です。`);
+    showParseResult(true, `✓ ${added}件を追加しました。残り${queue.length}件が選択可能です。`);
   }
 }
 
@@ -965,36 +993,38 @@ function clearJSONZone(){
 }
 
 function addManual(){
-  const species=document.getElementById('m-species').value.trim();
+  const species = document.getElementById('m-species').value.trim();
   if(!species){ toast('魚種を入力してください'); return; }
-  records.unshift({
-    id: Date.now(),
-    date: document.getElementById('m-date').value,
-    time: document.getElementById('m-time').value,
+
+  const src = {
+    date:       document.getElementById('m-date').value,
+    time:       document.getElementById('m-time').value,
     species,
-    size_cm: parseFloat(document.getElementById('m-size').value)||'',
-    weight_kg: parseFloat(document.getElementById('m-weight').value)||'',
-    count: parseInt(document.getElementById('m-count').value)||1,
-    bait: document.getElementById('m-bait').value.trim(),
-    method: selMM,
-    spot: document.getElementById('m-spot').value.trim(),
-    tide: document.getElementById('m-tide').value,
-    weather: document.getElementById('m-weather').value,
-    temp: parseFloat(document.getElementById('m-temp').value)||'',
-    water_temp: parseFloat(document.getElementById('m-wtemp').value)||'',
-    wind: parseFloat(document.getElementById('m-wind').value)||'',
-    memo: document.getElementById('m-memo').value.trim(),
-    source: document.getElementById('m-source').value,
-    entered_at: new Date().toISOString(),
-  });
+    size_cm:    document.getElementById('m-size').value,
+    weight_kg:  document.getElementById('m-weight').value,
+    count:      document.getElementById('m-count').value,
+    bait:       document.getElementById('m-bait').value.trim(),
+    method:     selMM,
+    spot:       document.getElementById('m-spot').value.trim(),
+    tide:       document.getElementById('m-tide').value,
+    weather:    document.getElementById('m-weather').value,
+    temp:       document.getElementById('m-temp').value,
+    water_temp: document.getElementById('m-wtemp').value,
+    wind:       document.getElementById('m-wind').value,
+    memo:       document.getElementById('m-memo').value.trim(),
+    source:     document.getElementById('m-source').value,
+  };
+  records.unshift(makeRecord(src, src.source));
   persist();
   toast('✓ 追加しました！');
+
+  // フォームリセット
   ['m-species','m-size','m-weight','m-count','m-bait','m-spot','m-wtemp','m-temp','m-wind','m-memo']
-    .forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
-  document.getElementById('m-tide').value='';
-  document.getElementById('m-weather').value='';
-  selMM='';
-  document.querySelectorAll('[id^="mm-"]').forEach(t=>t.classList.remove('on'));
+    .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  document.getElementById('m-tide').value = '';
+  document.getElementById('m-weather').value = '';
+  selMM = '';
+  document.querySelectorAll('[id^="mm-"]').forEach(t => t.classList.remove('on'));
 }
 
 // ===== TABLE =====
@@ -1057,16 +1087,13 @@ function delRecord(id){
 function toggleRow(id, checked){
   if(checked) selectedIds.add(id); else selectedIds.delete(id);
   updateSelActionBar();
-  // ヘッダーチェックボックスの状態を同期
-  const q = (document.getElementById('filter-q').value||'').toLowerCase();
-  const list = q ? records.filter(r=>(r.species||'').toLowerCase().includes(q)||(r.spot||'').toLowerCase().includes(q)) : records;
-  const allChk = document.getElementById('chk-all');
-  if(allChk) allChk.checked = list.length > 0 && list.every(r => selectedIds.has(r.id));
+  const list = getFilteredList();
+  const chkAll = document.getElementById('chk-all');
+  if(chkAll) chkAll.checked = list.length > 0 && list.every(r => selectedIds.has(r.id));
 }
 
 function toggleAllRows(checked){
-  const q = (document.getElementById('filter-q').value||'').toLowerCase();
-  const list = q ? records.filter(r=>(r.species||'').toLowerCase().includes(q)||(r.spot||'').toLowerCase().includes(q)) : records;
+  const list = getFilteredList();
   list.forEach(r => { if(checked) selectedIds.add(r.id); else selectedIds.delete(r.id); });
   renderTable(); updateSelActionBar();
 }
@@ -1106,19 +1133,11 @@ function srcBadge(s){
 }
 
 function renderTable(){
-  const q = (document.getElementById('filter-q').value||'').toLowerCase();
-  const sf = (document.getElementById('species-filter')||{}).value||'';
-  let list = records.filter(r=>{
-    const kw = !q || (r.species||'').toLowerCase().includes(q)||(r.spot||'').toLowerCase().includes(q)||(r.bait||'').toLowerCase().includes(q);
-    const sp = !sf || r.species === sf;
-    return kw && sp;
-  });
-  // ソート
-  list = [...list].sort((a,b)=>{
-    let av = a[sortKey]||'', bv = b[sortKey]||'';
-    if(sortKey==='size_cm'||sortKey==='weight_kg'||sortKey==='entered_at'){
-      av = sortKey==='entered_at' ? (av||'') : (parseFloat(av)||0);
-      bv = sortKey==='entered_at' ? (bv||'') : (parseFloat(bv)||0);
+  const list = [...getFilteredList()].sort((a, b) => {
+    let av = a[sortKey] || '', bv = b[sortKey] || '';
+    if(sortKey === 'size_cm' || sortKey === 'weight_kg'){
+      av = parseFloat(av) || 0;
+      bv = parseFloat(bv) || 0;
     }
     if(av < bv) return sortAsc ? -1 : 1;
     if(av > bv) return sortAsc ? 1 : -1;
@@ -1221,27 +1240,24 @@ function closeClonePanel(e){
 }
 
 function buildCloneRecord(){
-  const g = id => { const e=document.getElementById(id); return e?e.value:''; };
-  return {
-    id: Date.now(),
+  const g = id => { const e = document.getElementById(id); return e ? e.value : ''; };
+  return makeRecord({
     date:       g('cl-date'),
     time:       g('cl-time'),
     species:    g('cl-species'),
-    size_cm:    parseFloat(g('cl-size'))||'',
-    weight_kg:  parseFloat(g('cl-weight'))||'',
-    count:      parseInt(g('cl-count'))||1,
+    size_cm:    g('cl-size'),
+    weight_kg:  g('cl-weight'),
+    count:      g('cl-count'),
     bait:       g('cl-bait'),
     method:     g('cl-method'),
     spot:       g('cl-spot'),
     tide:       g('cl-tide'),
     weather:    '',
-    temp:       parseFloat(g('cl-temp'))||'',
-    water_temp: parseFloat(g('cl-wtemp'))||'',
-    wind:       parseFloat(g('cl-wind'))||'',
+    temp:       g('cl-temp'),
+    water_temp: g('cl-wtemp'),
+    wind:       g('cl-wind'),
     memo:       g('cl-memo'),
-    source:     'Instagram',
-    entered_at: new Date().toISOString(),
-  };
+  }, 'Instagram');
 }
 
 function saveClone(){
@@ -1318,14 +1334,14 @@ function importCSV(e){
     for(let i=1;i<lines.length;i++){
       const vals=parseCSVLine(lines[i]);
       const obj={}; headers.forEach((h,idx)=>{ obj[h]=(vals[idx]||'').replace(/^"|"$/g,''); });
-      const r={
-        id:Date.now()+i, date:obj.date||'', time:obj.time||'', species:obj.species||'',
-        size_cm:parseFloat(obj.size_cm)||'', weight_kg:parseFloat(obj.weight_kg)||'',
-        count:parseInt(obj.count)||1, bait:obj.bait||'', method:obj.method||'',
-        spot:obj.spot||'', tide:obj.tide||'', weather:obj.weather||'',
-        temp:parseFloat(obj.temp)||'', water_temp:parseFloat(obj.water_temp)||'',
-        wind:parseFloat(obj.wind)||'', memo:obj.memo||'', source:obj.source||'インポート',
-      };
+      const r = makeRecord({
+        date: obj.date, time: obj.time, species: obj.species,
+        size_cm: obj.size_cm, weight_kg: obj.weight_kg, count: obj.count,
+        bait: obj.bait, method: obj.method, spot: obj.spot,
+        tide: obj.tide, weather: obj.weather, temp: obj.temp,
+        water_temp: obj.water_temp, wind: obj.wind, memo: obj.memo,
+        source: obj.source,
+      }, obj.source || 'インポート');
       if(r.species){ records.push(r); added++; }
     }
     persist(); renderTable(); updateStats();
@@ -1349,10 +1365,14 @@ function clearAll(){
   records=[];persist();renderTable();updateStats();toast('全データを削除しました');
 }
 
+// ===== TOAST（タイマー重複防止） =====
+let _toastTimer = null;
 function toast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2800);
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  if(_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { t.classList.remove('show'); _toastTimer = null; }, 2800);
 }
 
 function toggleListPanel(){
