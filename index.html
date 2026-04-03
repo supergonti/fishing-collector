@@ -137,7 +137,7 @@ textarea.pv-input{line-height:1.5;}
 .sv{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--gold);letter-spacing:1px;line-height:1;}
 .sl{font-size:10px;color:var(--text3);margin-top:1px;letter-spacing:1px;}
 
-.table-wrap{overflow-x:auto;overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);flex:1;min-height:0;}
+.table-wrap{overflow-x:auto;overflow-y:auto;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);}
 table{width:100%;border-collapse:collapse;font-size:12px;min-width:880px;}
 thead{background:var(--sea);position:sticky;top:0;z-index:10;}
 thead th{padding:9px 8px;text-align:left;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:2px;color:rgba(240,208,112,.75);font-weight:400;white-space:nowrap;border-right:1px solid rgba(255,255,255,.05);}
@@ -233,6 +233,22 @@ tbody tr.row-dup td.sp::after{content:' ⚠';color:var(--red);font-size:11px;}
 
 @media(max-width:900px){.layout{grid-template-columns:1fr;}.panel-left{border-right:none;border-bottom:1px solid var(--border2);max-height:none;}.panel-right{max-height:none;}}
 
+/* 全端末共通：テーブルを20行分の高さで固定しheadを固定・bodyをスクロール */
+.table-wrap{
+  overflow-x:auto;
+  overflow-y:auto;
+  background:var(--surface);
+  border:1px solid var(--border2);
+  border-radius:var(--r);
+  /* 1行約34px × 20行 + ヘッダー行34px = 714px */
+  height:714px;
+}
+thead{
+  position:sticky;
+  top:0;
+  z-index:10;
+}
+
 @media(max-width:600px){
   .header{padding:8px 12px;}
   .header-title{font-size:17px;letter-spacing:2px;}
@@ -243,30 +259,8 @@ tbody tr.row-dup td.sp::after{content:' ⚠';color:var(--red);font-size:11px;}
   .sl{font-size:9px;}
   .bulk-bar{padding:6px 8px;gap:5px;}
   .bulk-bar .btn{padding:6px 10px;font-size:11px;}
-
-  /* データ一覧タブを画面いっぱいに使う縦固定レイアウト */
-  #tab-list > div {
-    height:calc(100vh - 90px) !important;
-    overflow:hidden !important;
-    display:flex !important;
-    flex-direction:column !important;
-    padding:8px !important;
-  }
-
-  /* テーブルラッパーが残り高さをすべて使いスクロール */
-  .table-wrap{
-    flex:1 !important;
-    min-height:0 !important;
-    overflow-x:auto !important;
-    overflow-y:auto !important;
-  }
-
-  /* theadを固定 */
-  thead{
-    position:sticky !important;
-    top:0 !important;
-    z-index:10 !important;
-  }
+  /* スマホでは少し行高が変わるので微調整 */
+  .table-wrap{height:680px;}
 }
 </style>
 </head>
