@@ -1390,10 +1390,59 @@ function refreshCount(){
   if(mini) mini.textContent = records.length + '件';
 }
 
+// ===== data.csv 自動読み込み（常にCSV優先） =====
+const CSV_URL = 'data.csv';
+const CSV_COUNT_KEY = 'fishing_csv_count';
+
+function parseCSVText(text){
+  const cleaned = text.replace(/^\uFEFF/, '');
+  const lines = cleaned.split('\n').filter(l => l.trim());
+  if(lines.length < 2) return [];
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const result = [];
+  for(let i = 1; i < lines.length; i++){
+    const vals = parseCSVLine(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').replace(/^"|"$/g, ''); });
+    if(obj.species){
+      result.push(makeRecord(obj, obj.source || 'インポート'));
+    }
+  }
+  return result;
+}
+
+function loadCSVfromServer(){
+  fetch(CSV_URL + '?t=' + Date.now())
+    .then(r => {
+      if(!r.ok) throw new Error('CSV not found');
+      return r.text();
+    })
+    .then(text => {
+      const loaded = parseCSVText(text);
+      if(loaded.length === 0) return;
+
+      const prevCount = parseInt(localStorage.getItem(CSV_COUNT_KEY) || '0');
+      if(loaded.length === prevCount && records.length === loaded.length) return;
+
+      // CSVでlocalStorageを上書き
+      records = loaded;
+      persist();
+      localStorage.setItem(CSV_COUNT_KEY, String(loaded.length));
+      renderTable();
+      updateStats();
+      toast(`✓ data.csv を読み込みました（${loaded.length}件）`);
+    })
+    .catch(() => {
+      // data.csvがない場合はlocalStorageのデータをそのまま使う
+    });
+}
+
 refreshCount();
 // 初期表示：データ一覧タブのテーブルを描画
 renderTable();
 updateStats();
+// data.csvを読み込んで最新データに更新
+loadCSVfromServer();
 </script>
 </body>
 </html>
