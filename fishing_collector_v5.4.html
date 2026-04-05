@@ -1302,7 +1302,7 @@ function updateStats(){
 // ===== CSV =====
 function exportCSV(){
   if(!records.length){ toast('データがありません'); return; }
-  const header='date,time,species,size_cm,weight_kg,count,bait,method,spot,tide,weather,temp,water_temp,wind,memo,source';
+  const header='日付,時刻,魚種,CM,KG,本,エサ,釣法,ポイント,潮,天気,水温,気温,風,メモ,ソース';
   const rows=records.map(r=>[
     r.date,r.time,r.species,r.size_cm,r.weight_kg,r.count,
     r.bait,r.method,r.spot,r.tide,r.weather,r.temp,r.water_temp,r.wind,
@@ -1313,8 +1313,7 @@ function exportCSV(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  const d=new Date();
-  a.download=`釣果DB_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`;
+  a.download=`fishing_data.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1335,13 +1334,13 @@ function importCSV(e){
       const vals=parseCSVLine(lines[i]);
       const obj={}; headers.forEach((h,idx)=>{ obj[h]=(vals[idx]||'').replace(/^"|"$/g,''); });
       const r = makeRecord({
-        date: obj.date, time: obj.time, species: obj.species,
-        size_cm: obj.size_cm, weight_kg: obj.weight_kg, count: obj.count,
-        bait: obj.bait, method: obj.method, spot: obj.spot,
-        tide: obj.tide, weather: obj.weather, temp: obj.temp,
-        water_temp: obj.water_temp, wind: obj.wind, memo: obj.memo,
-        source: obj.source,
-      }, obj.source || 'インポート');
+        date: obj['日付']||obj.date, time: obj['時刻']||obj.time, species: obj['魚種']||obj.species,
+        size_cm: obj['CM']||obj.size_cm, weight_kg: obj['KG']||obj.weight_kg, count: obj['本']||obj.count,
+        bait: obj['エサ']||obj.bait, method: obj['釣法']||obj.method, spot: obj['ポイント']||obj.spot,
+        tide: obj['潮']||obj.tide, weather: obj['天気']||obj.weather, temp: obj['水温']||obj.temp,
+        water_temp: obj['気温']||obj.water_temp, wind: obj['風']||obj.wind, memo: obj['メモ']||obj.memo,
+        source: obj['ソース']||obj.source,
+      }, obj['ソース']||obj.source || 'インポート');
       if(r.species){ records.push(r); added++; }
     }
     persist(); renderTable(); updateStats();
@@ -1390,8 +1389,8 @@ function refreshCount(){
   if(mini) mini.textContent = records.length + '件';
 }
 
-// ===== data.csv 自動読み込み（常にCSV優先） =====
-const CSV_URL = 'data.csv';
+// ===== fishing_data.csv 自動読み込み（常にCSV優先） =====
+const CSV_URL = 'fishing_data.csv';
 const CSV_COUNT_KEY = 'fishing_csv_count';
 
 function parseCSVText(text){
@@ -1404,7 +1403,7 @@ function parseCSVText(text){
     const vals = parseCSVLine(lines[i]);
     const obj = {};
     headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').replace(/^"|"$/g, ''); });
-    if(obj.species){
+    if(obj['魚種']||obj.species){
       result.push(makeRecord(obj, obj.source || 'インポート'));
     }
   }
@@ -1430,7 +1429,7 @@ function loadCSVfromServer(){
       localStorage.setItem(CSV_COUNT_KEY, String(loaded.length));
       renderTable();
       updateStats();
-      toast(`✓ data.csv を読み込みました（${loaded.length}件）`);
+      toast(`✓ fishing_data.csv を読み込みました（${loaded.length}件）`);
     })
     .catch(() => {
       // data.csvがない場合はlocalStorageのデータをそのまま使う
