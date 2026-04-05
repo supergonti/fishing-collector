@@ -1439,7 +1439,10 @@ function loadCSVfromServer(){
       if(loaded.length === 0) return;
 
       const prevCount = parseInt(localStorage.getItem(CSV_COUNT_KEY) || '0');
-      if(loaded.length === prevCount && records.length === loaded.length) return;
+      // 魚種が空のレコードが大半 → データ破損とみなして強制再読み込み
+      const validCount = records.filter(r => r.species && r.species.trim() !== '').length;
+      const isCorrupted = records.length > 0 && validCount === 0;
+      if(!isCorrupted && loaded.length === prevCount && records.length === loaded.length) return;
 
       // CSVでlocalStorageを上書き
       records = loaded;
