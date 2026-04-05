@@ -1404,7 +1404,25 @@ function parseCSVText(text){
     const obj = {};
     headers.forEach((h, idx) => { obj[h] = (vals[idx] || '').replace(/^"|"$/g, ''); });
     if(obj['魚種']||obj.species){
-      result.push(makeRecord(obj, obj.source || 'インポート'));
+      const mapped = {
+        date:       obj['日付']||obj.date,
+        time:       obj['時刻']||obj.time,
+        species:    obj['魚種']||obj.species,
+        size_cm:    obj['CM']||obj.size_cm,
+        weight_kg:  obj['KG']||obj.weight_kg,
+        count:      obj['本']||obj.count,
+        bait:       obj['エサ']||obj.bait,
+        method:     obj['釣法']||obj.method,
+        spot:       obj['ポイント']||obj.spot,
+        tide:       obj['潮']||obj.tide,
+        weather:    obj['天気']||obj.weather,
+        temp:       obj['水温']||obj.temp,
+        water_temp: obj['気温']||obj.water_temp,
+        wind:       obj['風']||obj.wind,
+        memo:       obj['メモ']||obj.memo,
+        source:     obj['ソース']||obj.source,
+      };
+      result.push(makeRecord(mapped, mapped.source || 'インポート'));
     }
   }
   return result;
