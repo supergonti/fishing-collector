@@ -1313,7 +1313,8 @@ function exportCSV(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download=`fishing_data.csv`;
+  const d=new Date();
+  a.download=`釣果DB_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1390,7 +1391,7 @@ function refreshCount(){
 }
 
 // ===== data.csv 自動読み込み（常にCSV優先） =====
-const CSV_URL = 'fishing_data.csv';
+const CSV_URL = 'data.csv';
 const CSV_COUNT_KEY = 'fishing_csv_count';
 
 function parseCSVText(text){
@@ -1421,10 +1422,7 @@ function loadCSVfromServer(){
       if(loaded.length === 0) return;
 
       const prevCount = parseInt(localStorage.getItem(CSV_COUNT_KEY) || '0');
-      // 魚種が空のレコードが大半 → データ破損とみなして強制再読み込み
-      const validCount = records.filter(r => r.species && r.species.trim() !== '').length;
-      const isCorrupted = records.length > 0 && validCount === 0;
-      if(!isCorrupted && loaded.length === prevCount && records.length === loaded.length) return;
+      if(loaded.length === prevCount && records.length === loaded.length) return;
 
       // CSVでlocalStorageを上書き
       records = loaded;
@@ -1432,7 +1430,7 @@ function loadCSVfromServer(){
       localStorage.setItem(CSV_COUNT_KEY, String(loaded.length));
       renderTable();
       updateStats();
-      toast(`✓ fishing_data.csv を読み込みました（${loaded.length}件）`);
+      toast(`✓ data.csv を読み込みました（${loaded.length}件）`);
     })
     .catch(() => {
       // data.csvがない場合はlocalStorageのデータをそのまま使う
