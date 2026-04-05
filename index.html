@@ -532,7 +532,7 @@ function load(){
   catch { records = []; }
 }
 function persist(){
-  localStorage.setItem(KEY, JSON.stringify(records));
+  try { localStorage.setItem(KEY, JSON.stringify(records)); } catch(e) { /* iOS プライベートブラウジング等 */ }
   refreshCount();
 }
 load();
@@ -543,6 +543,16 @@ function pad(n){ return String(n).padStart(2, '0'); }
 let _idCounter = 0;
 function genId(){ return Date.now() * 1000 + (_idCounter++ % 1000); }
 
+// ===== 数値変換ヘルパー（0を空文字にしない・NaN/undefined/空文字は''） =====
+function toNum(v){
+  if(v === '' || v === null || v === undefined) return '';
+  const n = parseFloat(v);
+  return isNaN(n) ? '' : n;
+}
+
+// ===== 表示用ヘルパー（0を'0'として表示し、空文字やnullのみ'—'） =====
+function dv(v){ return (v !== '' && v !== null && v !== undefined) ? v : '—'; }
+
 // ===== レコード生成の共通ファクトリ =====
 function makeRecord(src, source){
   return {
@@ -550,17 +560,17 @@ function makeRecord(src, source){
     date:       src.date       || '',
     time:       src.time       || '',
     species:    src.species    || '',
-    size_cm:    parseFloat(src.size_cm)   || '',
-    weight_kg:  parseFloat(src.weight_kg) || '',
+    size_cm:    toNum(src.size_cm),
+    weight_kg:  toNum(src.weight_kg),
     count:      parseInt(src.count)       || 1,
     bait:       src.bait       || '',
     method:     src.method     || '',
     spot:       src.spot       || '',
     tide:       src.tide       || '',
     weather:    src.weather    || '',
-    temp:       parseFloat(src.temp)       || '',
-    water_temp: parseFloat(src.water_temp) || '',
-    wind:       parseFloat(src.wind)       || '',
+    temp:       toNum(src.temp),
+    water_temp: toNum(src.water_temp),
+    wind:       toNum(src.wind),
     memo:       src.memo       || '',
     source:     source         || src.source || 'インポート',
     entered_at: new Date().toISOString(),
@@ -1064,11 +1074,12 @@ function updateSpeciesFilter(){
 }
 
 // 重複グループをまとめて返す（バナー表示用）
+// 判定基準：同日・同魚種・同数量・同ポイント（weight_kgは外す―空でも誤検出しないように）
 function getDupGroups(records){
   const groups = {};
   records.forEach(r => {
     if(!r.date || !r.species) return;
-    const key = `${r.date}|${r.species}|${r.count}|${r.weight_kg||''}|${(r.spot||'').trim()}`;
+    const key = `${r.date}|${r.species}|${r.count}|${(r.spot||'').trim()}`;
     if(!groups[key]) groups[key] = [];
     groups[key].push(r.id);
   });
@@ -1156,8 +1167,8 @@ function renderTable(){
   const dupBanner = document.getElementById('dup-banner');
   if(dupGroups.length > 0){
     const groupDesc = dupGroups.map(g => {
-      const [date, species, count, weight, spot] = g.key.split('|');
-      return `${date} ${species}×${count}匹${weight?(' '+weight+'kg'):''} (${g.count}件重複)`;
+      const [date, species, count, spot] = g.key.split('|');
+      return `${date} ${species}×${count}匹${spot?' @'+spot:''} (${g.count}件重複)`;
     }).join('、');
     dupBanner.innerHTML = `⚠️ <b>${dupGroups.length}グループ・${dupIds.size}件</b>に重複の可能性があります。<br><span style="font-size:11px;">${groupDesc}</span>`;
     dupBanner.classList.add('show');
@@ -1176,17 +1187,17 @@ function renderTable(){
       <td class="chk-col"><input type="checkbox" class="row-chk" ${chk?'checked':''} onchange="toggleRow(${r.id},this.checked)"></td>
       <td class="dt">${r.date ? r.date.slice(2).replace(/-/g,'/') : '—'}</td>
       <td class="sp" style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.species||''}">${r.species ? r.species.slice(0,7) : ''}${dup?'<span class="dup-icon" title="重複の可能性あり">⚠️</span>':''}</td>
-      <td class="sz">${r.size_cm||'—'}</td>
-      <td class="wt">${r.weight_kg||'—'}</td>
+      <td class="sz">${dv(r.size_cm)}</td>
+      <td class="wt">${dv(r.weight_kg)}</td>
       <td>${r.count||1}</td>
       <td>${r.bait||'—'}</td>
       <td style="font-size:11px;">${r.method||'—'}</td>
       <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;" title="${r.spot||''}">${r.spot||'—'}</td>
       <td>${r.tide||'—'}</td>
       <td style="font-size:11px;">${r.weather||'—'}</td>
-      <td>${r.water_temp||'—'}</td>
-      <td>${r.temp||'—'}</td>
-      <td>${r.wind||'—'}</td>
+      <td>${dv(r.water_temp)}</td>
+      <td>${dv(r.temp)}</td>
+      <td>${dv(r.wind)}</td>
       <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;font-size:11px;" title="${r.memo||''}">${r.memo||'—'}</td>
       <td>${srcBadge(r.source)}</td>
       <td class="entered-dt">${r.entered_at?r.entered_at.replace('T',' ').slice(0,16):'—'}</td>
@@ -1313,8 +1324,7 @@ function exportCSV(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  const d=new Date();
-  a.download=`釣果DB_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`;
+  a.download=`fishing_data.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1391,11 +1401,20 @@ function refreshCount(){
 }
 
 // ===== data.csv 自動読み込み（常にCSV優先） =====
-const CSV_URL = 'data.csv';
-const CSV_COUNT_KEY = 'fishing_csv_count';
+const CSV_URL = 'fishing_data.csv';
+const CSV_FP_KEY = 'fishing_csv_fp'; // コンテンツフィンガープリントキー
+
+// CSVコンテンツのフィンガープリントを生成（件数+先頭/末尾レコードの主要フィールド）
+function csvFingerprint(recs){
+  if(!recs.length) return '0';
+  const n = recs.length;
+  const f = recs[0], l = recs[n - 1];
+  return `${n}:${f.date}:${f.species}:${f.size_cm}:${f.weight_kg}:${l.date}:${l.species}:${l.size_cm}:${l.weight_kg}`;
+}
 
 function parseCSVText(text){
-  const cleaned = text.replace(/^\uFEFF/, '');
+  // \r\n / \r も \n に正規化してから処理（iPhone/WindowsのCSVでも正しく動作させる）
+  const cleaned = text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   const lines = cleaned.split('\n').filter(l => l.trim());
   if(lines.length < 2) return [];
   const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
@@ -1421,21 +1440,27 @@ function loadCSVfromServer(){
       const loaded = parseCSVText(text);
       if(loaded.length === 0) return;
 
-      const prevCount = parseInt(localStorage.getItem(CSV_COUNT_KEY) || '0');
-      if(loaded.length === prevCount && records.length === loaded.length) return;
+      // 件数だけでなくコンテンツのフィンガープリントで差分を検出する
+      // （旧バージョンが件数一致で誤スキップするバグを修正）
+      const newFp = csvFingerprint(loaded);
+      const prevFp = localStorage.getItem(CSV_FP_KEY) || '';
+      if(newFp === prevFp) return;
 
       // CSVでlocalStorageを上書き
       records = loaded;
-      persist();
-      localStorage.setItem(CSV_COUNT_KEY, String(loaded.length));
+      try { persist(); } catch(e) { /* プライベートブラウジング等でlocalStorage使用不可の場合 */ }
+      try { localStorage.setItem(CSV_FP_KEY, newFp); } catch(e) {}
       renderTable();
       updateStats();
-      toast(`✓ data.csv を読み込みました（${loaded.length}件）`);
+      toast(`✓ fishing_data.csv を読み込みました（${loaded.length}件）`);
     })
     .catch(() => {
       // data.csvがない場合はlocalStorageのデータをそのまま使う
     });
 }
+
+// 旧バージョンのキャッシュキーを削除（iPhoneの古いキャッシュによる誤スキップを防ぐ）
+try { localStorage.removeItem('fishing_csv_count'); } catch(e) {}
 
 refreshCount();
 // 初期表示：データ一覧タブのテーブルを描画
