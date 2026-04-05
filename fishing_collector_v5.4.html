@@ -1078,7 +1078,7 @@ function getDupGroups(records){
   const groups = {};
   records.forEach(r => {
     if(!r.date || !r.species) return;
-    const key = `${r.date}|${r.species}|${r.count}|${(r.spot||'').trim()}`;
+    const key = `${r.date}|${r.species}|${r.count}|${r.size_cm||''}|${r.weight_kg||''}|${(r.spot||'').trim()}`;
     if(!groups[key]) groups[key] = [];
     groups[key].push(r.id);
   });
@@ -1159,7 +1159,7 @@ function renderTable(){
   document.getElementById('empty-state').style.display = list.length ? 'none' : 'block';
   document.getElementById('main-table').style.display = list.length ? '' : 'none';
 
-  // 重複検出（同日・同魚種・同数量・同ポイントで判定）
+  // 重複検出（同日・同魚種・同数量・同サイズ・同重量・同ポイントで判定）
   const dupGroups = getDupGroups(records);
   const dupIdSet = new Set(dupGroups.flatMap(g => g.ids));
   const dupIds = new Set(list.filter(r => dupIdSet.has(r.id)).map(r => r.id));

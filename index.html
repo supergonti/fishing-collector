@@ -1074,12 +1074,12 @@ function updateSpeciesFilter(){
 }
 
 // 重複グループをまとめて返す（バナー表示用）
-// 判定基準：同日・同魚種・同数量・同ポイント（weight_kgは外す―空でも誤検出しないように）
+// 判定基準：同日・同魚種・同数量・同サイズ・同重量・同ポイント（size_cm/weight_kgが異なれば別個体として扱う）
 function getDupGroups(records){
   const groups = {};
   records.forEach(r => {
     if(!r.date || !r.species) return;
-    const key = `${r.date}|${r.species}|${r.count}|${(r.spot||'').trim()}`;
+    const key = `${r.date}|${r.species}|${r.count}|${r.size_cm||''}|${r.weight_kg||''}|${(r.spot||'').trim()}`;
     if(!groups[key]) groups[key] = [];
     groups[key].push(r.id);
   });
@@ -1160,7 +1160,7 @@ function renderTable(){
   document.getElementById('empty-state').style.display = list.length ? 'none' : 'block';
   document.getElementById('main-table').style.display = list.length ? '' : 'none';
 
-  // 重複検出（同日・同魚種・同数量・同ポイントで判定）
+  // 重複検出（同日・同魚種・同数量・同サイズ・同重量・同ポイントで判定）
   const dupGroups = getDupGroups(records);
   const dupIdSet = new Set(dupGroups.flatMap(g => g.ids));
   const dupIds = new Set(list.filter(r => dupIdSet.has(r.id)).map(r => r.id));
@@ -1438,36 +1438,4 @@ function loadCSVfromServer(){
     })
     .then(text => {
       const loaded = parseCSVText(text);
-      if(loaded.length === 0) return;
-
-      // 件数だけでなくコンテンツのフィンガープリントで差分を検出する
-      // （旧バージョンが件数一致で誤スキップするバグを修正）
-      const newFp = csvFingerprint(loaded);
-      const prevFp = localStorage.getItem(CSV_FP_KEY) || '';
-      if(newFp === prevFp) return;
-
-      // CSVでlocalStorageを上書き
-      records = loaded;
-      try { persist(); } catch(e) { /* プライベートブラウジング等でlocalStorage使用不可の場合 */ }
-      try { localStorage.setItem(CSV_FP_KEY, newFp); } catch(e) {}
-      renderTable();
-      updateStats();
-      toast(`✓ fishing_data.csv を読み込みました（${loaded.length}件）`);
-    })
-    .catch(() => {
-      // data.csvがない場合はlocalStorageのデータをそのまま使う
-    });
-}
-
-// 旧バージョンのキャッシュキーを削除（iPhoneの古いキャッシュによる誤スキップを防ぐ）
-try { localStorage.removeItem('fishing_csv_count'); } catch(e) {}
-
-refreshCount();
-// 初期表示：データ一覧タブのテーブルを描画
-renderTable();
-updateStats();
-// data.csvを読み込んで最新データに更新
-loadCSVfromServer();
-</script>
-</body>
-</html>
+      if(loa
