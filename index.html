@@ -1074,7 +1074,6 @@ function updateSpeciesFilter(){
 }
 
 // 重複グループをまとめて返す（バナー表示用）
-// 判定基準：同日・同魚種・同数量・同サイズ・同重量・同ポイント（size_cm/weight_kgが異なれば別個体として扱う）
 function getDupGroups(records){
   const groups = {};
   records.forEach(r => {
@@ -1324,7 +1323,8 @@ function exportCSV(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download=`fishing_data.csv`;
+  const d=new Date();
+  a.download=`釣果DB_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1401,7 +1401,7 @@ function refreshCount(){
 }
 
 // ===== data.csv 自動読み込み（常にCSV優先） =====
-const CSV_URL = 'fishing_data.csv';
+const CSV_URL = 'data.csv';
 const CSV_FP_KEY = 'fishing_csv_fp'; // コンテンツフィンガープリントキー
 
 // CSVコンテンツのフィンガープリントを生成（件数+先頭/末尾レコードの主要フィールド）
@@ -1438,4 +1438,36 @@ function loadCSVfromServer(){
     })
     .then(text => {
       const loaded = parseCSVText(text);
-      if(loa
+      if(loaded.length === 0) return;
+
+      // 件数だけでなくコンテンツのフィンガープリントで差分を検出する
+      // （旧バージョンが件数一致で誤スキップするバグを修正）
+      const newFp = csvFingerprint(loaded);
+      const prevFp = localStorage.getItem(CSV_FP_KEY) || '';
+      if(newFp === prevFp) return;
+
+      // CSVでlocalStorageを上書き
+      records = loaded;
+      try { persist(); } catch(e) { /* プライベートブラウジング等でlocalStorage使用不可の場合 */ }
+      try { localStorage.setItem(CSV_FP_KEY, newFp); } catch(e) {}
+      renderTable();
+      updateStats();
+      toast(`✓ data.csv を読み込みました（${loaded.length}件）`);
+    })
+    .catch(() => {
+      // data.csvがない場合はlocalStorageのデータをそのまま使う
+    });
+}
+
+// 旧バージョンのキャッシュキーを削除（iPhoneの古いキャッシュによる誤スキップを防ぐ）
+try { localStorage.removeItem('fishing_csv_count'); } catch(e) {}
+
+refreshCount();
+// 初期表示：データ一覧タブのテーブルを描画
+renderTable();
+updateStats();
+// data.csvを読み込んで最新データに更新
+loadCSVfromServer();
+</script>
+</body>
+</html>
