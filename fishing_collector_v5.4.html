@@ -441,6 +441,7 @@ thead{
       <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-import" onclick="document.getElementById('csv-imp').click()">📂 CSV読込</button>
         <input type="file" id="csv-imp" accept=".csv" style="display:none" onchange="importCSV(event)">
+        <button class="btn btn-import" onclick="reloadCSV()" style="padding:10px 12px;font-size:12px;" title="フィンガープリントをリセットしてdata.csvを再読込">🔄 CSV再読込</button>
         <button class="btn btn-csv" onclick="exportCSV()">📥 CSVで保存</button>
         <button class="btn btn-danger" onclick="clearAll()">全削除</button>
       </div>
@@ -751,7 +752,22 @@ function copyPrompt(){
 ※同投稿に複数魚種がある場合は魚種ごとに別オブジェクト
 ※文章に複数の重量が列挙されている場合（例:「35、30、20kg」）は重量ごとに別オブジェクトに分割してください
 ※【重要・日付計算】「N日前」「N時間前」は必ずファイル名から取得した撮影日時からN日（N時間）を引いた日付を使用してください。例：撮影日時=2026年3月25日、「3日前」→ 25-3=22 → 2026-03-22。現在時刻からは絶対に計算しないでください。`;
-  navigator.clipboard.writeText(txt).then(()=>toast('📋 コピーしました！')).catch(()=>toast('コピーできませんでした'));
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast('📋 コピーしました！')).catch(()=>fallbackCopy(txt));
+  } else {
+    fallbackCopy(txt);
+  }
+}
+
+function fallbackCopy(txt){
+  const ta=document.createElement('textarea');
+  ta.value=txt;
+  ta.style.cssText='position:fixed;top:-9999px;left:-9999px;opacity:0;pointer-events:none;';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  try{ document.execCommand('copy'); toast('📋 コピーしました！'); }
+  catch(e){ toast('コピーできませんでした（長押しで手動コピーしてください）'); }
+  document.body.removeChild(ta);
 }
 
 // ===== JSON PARSE =====
@@ -1336,7 +1352,7 @@ function importCSV(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
   reader.onload=ev=>{
-    const text=ev.target.result.replace(/^\uFEFF/,'');
+    const text=ev.target.result.replace(/^\uFEFF/,'').replace(/\r\n/g,'\n').replace(/\r/g,'\n');
     const lines=text.split('\n').filter(l=>l.trim());
     if(lines.length<2){ toast('データが見つかりません'); return; }
     const headers=lines[0].split(',').map(h=>h.trim().toLowerCase());
@@ -1431,6 +1447,8 @@ function parseCSVText(text){
 }
 
 function loadCSVfromServer(){
+  // 読み込み中インジケーター（データが空の場合のみ表示）
+  if(records.length === 0){ const e=document.getElementById('empty-state'); if(e) e.innerHTML='<div class="empty-icon">⏳</div><div>data.csv を読み込み中...</div>'; }
   fetch(CSV_URL + '?t=' + Date.now())
     .then(r => {
       if(!r.ok) throw new Error('CSV not found');
@@ -1454,9 +1472,18 @@ function loadCSVfromServer(){
       updateStats();
       toast(`✓ data.csv を読み込みました（${loaded.length}件）`);
     })
-    .catch(() => {
-      // data.csvがない場合はlocalStorageのデータをそのまま使う
+    .catch(err => {
+      // data.csvが読み込めない場合はlocalStorageのデータをそのまま使う
+      console.warn('CSV load failed:', err);
+      if(records.length === 0) toast('⚠ data.csv の読み込みができませんでした');
     });
+}
+
+// ===== 手動 CSV 再読込（キャッシュリセット付き） =====
+function reloadCSV(){
+  try { localStorage.removeItem(CSV_FP_KEY); } catch(e) {}
+  toast('🔄 data.csv を再読み込みしています...');
+  loadCSVfromServer();
 }
 
 // 旧バージョンのキャッシュキーを削除（iPhoneの古いキャッシュによる誤スキップを防ぐ）
@@ -1469,5 +1496,68 @@ updateStats();
 // data.csvを読み込んで最新データに更新
 loadCSVfromServer();
 </script>
+<!-- パスワード変更: pw-overlay内の PW = '7360' を書き換えてください -->
+
+<!-- ===== PASSWORD OVERLAY ===== -->
+<div id="pw-overlay" style="
+  display:flex;position:fixed;inset:0;z-index:9999;
+  background:#0d2240;align-items:center;justify-content:center;
+  font-family:'Noto Sans JP',sans-serif;">
+  <div style="
+    background:#fff;border-radius:12px;padding:36px 32px;
+    width:min(340px,90vw);text-align:center;
+    box-shadow:0 8px 40px rgba(0,0,0,0.4);">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;
+      letter-spacing:4px;color:#0d2240;margin-bottom:4px;">
+      釣果データ収集ツール
+    </div>
+    <div style="font-size:11px;color:#8a7a68;letter-spacing:2px;margin-bottom:28px;">
+      V5.4 — パスワードを入力してください
+    </div>
+    <input id="pw-input" type="password" placeholder="パスワード"
+      maxlength="20" autocomplete="off"
+      style="width:100%;padding:12px 16px;font-size:18px;letter-spacing:6px;
+        text-align:center;border:2px solid #c8b898;border-radius:8px;
+        outline:none;font-family:'Noto Sans JP',sans-serif;margin-bottom:10px;"
+      onkeydown="if(event.key==='Enter')checkPW()">
+    <div id="pw-err" style="height:20px;font-size:12px;color:#c0392b;margin-bottom:8px;"></div>
+    <button onclick="checkPW()"
+      style="width:100%;padding:13px;background:#b8963e;color:#fff;
+        border:none;border-radius:8px;font-size:15px;font-weight:700;
+        cursor:pointer;font-family:'Noto Sans JP',sans-serif;letter-spacing:2px;">
+      ログイン
+    </button>
+  </div>
+</div>
+
+<script>
+(function(){
+  const PW = '7360';
+  const PW_KEY = 'fishing_pw_ok';
+  // セッション中に認証済みならスキップ
+  if(sessionStorage.getItem(PW_KEY) === '1'){
+    document.getElementById('pw-overlay').style.display = 'none';
+    return;
+  }
+  // ページをロック
+  document.getElementById('pw-overlay').style.display = 'flex';
+  setTimeout(()=>{ const i=document.getElementById('pw-input'); if(i) i.focus(); }, 100);
+
+  window.checkPW = function(){
+    const val = document.getElementById('pw-input').value;
+    if(val === PW){
+      sessionStorage.setItem(PW_KEY, '1');
+      document.getElementById('pw-overlay').style.display = 'none';
+    } else {
+      const err = document.getElementById('pw-err');
+      err.textContent = 'パスワードが違います';
+      document.getElementById('pw-input').value = '';
+      document.getElementById('pw-input').focus();
+      setTimeout(()=>{ err.textContent=''; }, 2000);
+    }
+  };
+})();
+</script>
+
 </body>
 </html>
