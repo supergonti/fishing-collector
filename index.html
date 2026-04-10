@@ -1007,23 +1007,31 @@ async function uploadToGitHub(){
   const btn=document.getElementById('btn-gh-push');
   if(btn){btn.disabled=true;btn.textContent='📤 アップロード中...';}
   const headers={
-    'Authorization':'token '+token,
+    'Authorization':'Bearer '+token,
     'Content-Type':'application/json',
-    'Accept':'application/vnd.github.v3+json'
+    'Accept':'application/vnd.github.v3+json',
+    'X-GitHub-Api-Version':'2022-11-28'
   };
+  const fetchOpts={credentials:'omit',cache:'no-store'};
   const apiBase=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
   try{
-    // 現在のファイルの SHA を取得（更新に必要）
+    // ① 現在のファイルの SHA を取得
     let sha=null;
-    const getRes=await fetch(apiBase,{headers,credentials:'omit'});
+    const getRes=await fetch(apiBase,{...fetchOpts,headers});
+    if(getRes.status===401){
+      localStorage.removeItem(GH_TOKEN_KEY);
+      toast('⚠ トークンが無効です。⚙ボタンで再設定してください。');
+      showGHTokenModal();
+      return;
+    }
     if(getRes.ok){
       const data=await getRes.json();
       sha=data.sha;
     } else if(getRes.status!==404){
-      throw new Error('SHA取得失敗: '+getRes.status);
+      throw new Error('SHA取得失敗 (HTTP '+getRes.status+')');
     }
 
-    // CSV を Base64 エンコードしてアップロード
+    // ② CSV を Base64 エンコードしてアップロード
     const csv=generateCSVContent();
     const content=toBase64UTF8(csv);
     const today=new Date().toISOString().slice(0,10);
@@ -1032,21 +1040,24 @@ async function uploadToGitHub(){
       content,
       ...(sha?{sha}:{})
     };
-    const putRes=await fetch(apiBase,{method:'PUT',headers,body:JSON.stringify(body),credentials:'omit'});
+    const putRes=await fetch(apiBase,{...fetchOpts,method:'PUT',headers,body:JSON.stringify(body)});
+    const putData=await putRes.json().catch(()=>({}));
+
     if(putRes.ok){
-      toast(`✓ GitHub に保存しました（${records.length}件）`);
+      // コミットSHAを表示して本当に更新されたか確認できるようにする
+      const commitSha=(putData.commit?.sha||'').slice(0,7);
+      toast(`✓ GitHub保存完了（${records.length}件）commit:${commitSha}`);
+    } else if(putRes.status===401){
+      localStorage.removeItem(GH_TOKEN_KEY);
+      toast('⚠ トークンが無効です。⚙ボタンで再設定してください。');
+      showGHTokenModal();
+    } else if(putRes.status===409){
+      toast('⚠ 競合エラー(409)。もう一度押してください。');
     } else {
-      const err=await putRes.json().catch(()=>({}));
-      if(putRes.status===401){
-        localStorage.removeItem(GH_TOKEN_KEY);
-        toast('⚠ トークンが無効です。再設定してください。');
-        showGHTokenModal();
-      } else {
-        toast('⚠ GitHub保存失敗: '+(err.message||putRes.status));
-      }
+      toast('⚠ GitHub保存失敗 HTTP'+putRes.status+': '+(putData.message||''));
     }
   } catch(e){
-    toast('⚠ エラー: '+e.message);
+    toast('⚠ 通信エラー: '+e.message);
   } finally {
     if(btn){btn.disabled=false;btn.textContent='🚀 GitHubに保存';}
   }
