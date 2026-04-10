@@ -1015,7 +1015,7 @@ async function uploadToGitHub(){
   try{
     // 現在のファイルの SHA を取得（更新に必要）
     let sha=null;
-    const getRes=await fetch(apiBase,{headers});
+    const getRes=await fetch(apiBase,{headers,credentials:'omit'});
     if(getRes.ok){
       const data=await getRes.json();
       sha=data.sha;
@@ -1032,7 +1032,7 @@ async function uploadToGitHub(){
       content,
       ...(sha?{sha}:{})
     };
-    const putRes=await fetch(apiBase,{method:'PUT',headers,body:JSON.stringify(body)});
+    const putRes=await fetch(apiBase,{method:'PUT',headers,body:JSON.stringify(body),credentials:'omit'});
     if(putRes.ok){
       toast(`✓ GitHub に保存しました（${records.length}件）`);
     } else {
