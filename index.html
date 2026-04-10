@@ -1272,32 +1272,5 @@ async function startGeocoding(){
 refreshCount();renderTable();updateStats();loadCSVfromServer();
 </script>
 
-<!-- ===== PASSWORD OVERLAY ===== -->
-<div id="pw-overlay" style="display:flex;position:fixed;inset:0;z-index:9999;background:#0d2240;align-items:center;justify-content:center;font-family:'Noto Sans JP',sans-serif;">
-  <div style="background:#fff;border-radius:12px;padding:36px 32px;width:min(340px,90vw);text-align:center;box-shadow:0 8px 40px rgba(0,0,0,0.4);">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:4px;color:#0d2240;margin-bottom:4px;">釣果データ収集ソフト</div>
-    <div style="font-size:11px;color:#8a7a68;letter-spacing:2px;margin-bottom:28px;">V5.5 — パスワードを入力してください</div>
-    <input id="pw-input" type="password" placeholder="パスワード" maxlength="20" autocomplete="off"
-      style="width:100%;padding:12px 16px;font-size:18px;letter-spacing:6px;text-align:center;border:2px solid #c8b898;border-radius:8px;outline:none;font-family:'Noto Sans JP',sans-serif;margin-bottom:10px;"
-      onkeydown="if(event.key==='Enter')checkPW()">
-    <div id="pw-err" style="height:20px;font-size:12px;color:#c0392b;margin-bottom:8px;"></div>
-    <button onclick="checkPW()" style="width:100%;padding:13px;background:#b8963e;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;letter-spacing:2px;">ログイン</button>
-  </div>
-</div>
-<script>
-(function(){
-  const PW='7360',PW_KEY='fishing_pw_ok';
-  if(sessionStorage.getItem(PW_KEY)==='1'){document.getElementById('pw-overlay').style.display='none';return;}
-  document.getElementById('pw-overlay').style.display='flex';
-  setTimeout(()=>{const i=document.getElementById('pw-input');if(i)i.focus();},100);
-  window.checkPW=function(){
-    const val=document.getElementById('pw-input').value;
-    if(val===PW){sessionStorage.setItem(PW_KEY,'1');document.getElementById('pw-overlay').style.display='none';}
-    else{const err=document.getElementById('pw-err');err.textContent='パスワードが違います';
-      document.getElementById('pw-input').value='';document.getElementById('pw-input').focus();
-      setTimeout(()=>{err.textContent='';},2000);}
-  };
-})();
-</script>
 </body>
 </html>
