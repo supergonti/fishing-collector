@@ -325,6 +325,8 @@ th.chk-col,td.chk-col{width:36px;text-align:center;padding:6px 4px;}
         <input type="file" id="csv-imp" accept=".csv" style="display:none" onchange="importCSV(event)">
         <button class="btn btn-import" onclick="reloadCSV()" style="padding:10px 12px;font-size:12px;" title="フィンガープリントをリセットしてdata.csvを再読込">🔄 CSV再読込</button>
         <button class="btn btn-csv" onclick="exportCSV()">📥 CSVで保存</button>
+        <button class="btn" id="btn-gh-push" onclick="uploadToGitHub()" style="background:#24292f;color:#7ee787;border:1px solid rgba(126,231,135,.35);padding:10px 14px;font-size:12px;" title="GitHub に fishing_data.csv を直接アップロード">🚀 GitHubに保存</button>
+        <button class="btn" onclick="showGHTokenModal()" style="background:#24292f;color:rgba(255,255,255,.4);border:1px solid rgba(255,255,255,.1);padding:10px 10px;font-size:12px;" title="GitHub トークン設定">⚙</button>
         <button class="btn btn-danger" onclick="clearAll()">全削除</button>
       </div>
     </div>
@@ -356,6 +358,33 @@ th.chk-col,td.chk-col{width:36px;text-align:center;padding:6px 4px;}
 </div>
 
 <div class="toast" id="toast"></div>
+
+<!-- ===== GitHub トークン設定モーダル ===== -->
+<div id="gh-token-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:300;align-items:center;justify-content:center;" onclick="closeGHTokenModal(event)">
+  <div style="background:#fff;border-radius:10px;padding:28px;width:min(460px,92vw);box-shadow:0 8px 40px rgba(0,0,0,.4);border-top:3px solid #24292f;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:#24292f;margin-bottom:6px;">🐙 GitHub 設定</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:16px;line-height:1.7;">
+      Personal Access Token（PAT）を設定すると「🚀 GitHubに保存」ボタンで<br>
+      <b>fishing_data.csv を直接リポジトリにプッシュ</b>できます。<br>
+      <span style="color:#c0392b;font-size:11px;">※ トークンはこのデバイスのlocalStorageに保存されます</span>
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:10px;letter-spacing:1px;color:var(--text3);text-transform:uppercase;display:block;margin-bottom:4px;">Personal Access Token</label>
+      <input type="password" id="gh-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+        style="width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:monospace;outline:none;">
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px;line-height:1.65;">
+      トークンの取得：GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)<br>
+      必要なスコープ：<b>public_repo</b>（パブリックリポジトリの場合）
+    </div>
+    <div id="gh-token-status" style="font-size:12px;margin-bottom:12px;min-height:18px;"></div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="saveGHToken()" style="flex:1;padding:11px;background:#24292f;color:#7ee787;border:none;border-radius:6px;font-family:'Noto Sans JP',sans-serif;font-size:13px;font-weight:700;cursor:pointer;">保存</button>
+      <button onclick="clearGHToken()" style="padding:11px 16px;background:transparent;color:var(--red);border:1px solid rgba(192,57,43,.3);border-radius:6px;font-size:12px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">削除</button>
+      <button onclick="closeGHTokenModal()" style="padding:11px 16px;background:var(--bg3);color:var(--text3);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;font-family:'Noto Sans JP',sans-serif;">閉じる</button>
+    </div>
+  </div>
+</div>
 
 <!-- CLONE PANEL -->
 <div class="clone-overlay" id="clone-overlay" onclick="closeClonePanel(event)">
@@ -927,22 +956,149 @@ function updateStats(){
   document.getElementById('s-ig').textContent=igCount;document.getElementById('s-man').textContent=manCount;
 }
 
-function exportCSV(){
-  if(!records.length){toast('データがありません');return;}
+// ===== CSV 生成（exportCSV / GitHub共通）=====
+function generateCSVContent(){
   const header='date,time,species,size_cm,weight_kg,count,bait,method,spot,spot_lat,spot_lng,nearest_station,tide,weather,temp,water_temp,wind,memo,source';
   const rows=records.map(r=>[
     r.date,r.time,r.species,r.size_cm,r.weight_kg,r.count,
     r.bait,r.method,'"'+(r.spot||'').replace(/"/g,'""')+'"',
-    r.spot_lat,r.spot_lng,'"'+(r.nearest_station||'').replace(/"/g,'""')+'"',
+    r.spot_lat!==''&&r.spot_lat!=null?r.spot_lat:'',
+    r.spot_lng!==''&&r.spot_lng!=null?r.spot_lng:'',
+    '"'+(r.nearest_station||'').replace(/"/g,'""')+'"',
     r.tide,r.weather,r.temp,r.water_temp,r.wind,
     '"'+(r.memo||'').replace(/"/g,'""')+'"',r.source
   ].join(','));
-  const csv='\uFEFF'+header+'\n'+rows.join('\n');
+  return '\uFEFF'+header+'\n'+rows.join('\n');
+}
+
+function exportCSV(){
+  if(!records.length){toast('データがありません');return;}
+  const csv=generateCSVContent();
   const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;
   a.download='fishing_data.csv';
   document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
   toast(`✓ CSV保存完了 (${records.length}件)`);
+}
+
+// ===== GitHub API 直接アップロード =====
+const GH_OWNER='supergonti';
+const GH_REPO='fishing-collector';
+const GH_FILE='fishing_data.csv';
+const GH_TOKEN_KEY='fishing_gh_token';
+
+// UTF-8対応 Base64エンコード
+function toBase64UTF8(str){
+  const bytes=new TextEncoder().encode(str);
+  let bin='';
+  bytes.forEach(b=>bin+=String.fromCharCode(b));
+  return btoa(bin);
+}
+
+async function uploadToGitHub(){
+  if(!records.length){toast('データがありません');return;}
+  const token=localStorage.getItem(GH_TOKEN_KEY);
+  if(!token){
+    toast('⚙ まずトークンを設定してください');
+    showGHTokenModal();
+    return;
+  }
+  const btn=document.getElementById('btn-gh-push');
+  if(btn){btn.disabled=true;btn.textContent='📤 アップロード中...';}
+  const headers={
+    'Authorization':'token '+token,
+    'Content-Type':'application/json',
+    'Accept':'application/vnd.github.v3+json'
+  };
+  const apiBase=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${GH_FILE}`;
+  try{
+    // 現在のファイルの SHA を取得（更新に必要）
+    let sha=null;
+    const getRes=await fetch(apiBase,{headers});
+    if(getRes.ok){
+      const data=await getRes.json();
+      sha=data.sha;
+    } else if(getRes.status!==404){
+      throw new Error('SHA取得失敗: '+getRes.status);
+    }
+
+    // CSV を Base64 エンコードしてアップロード
+    const csv=generateCSVContent();
+    const content=toBase64UTF8(csv);
+    const today=new Date().toISOString().slice(0,10);
+    const body={
+      message:`釣果データ更新 ${today} (${records.length}件)`,
+      content,
+      ...(sha?{sha}:{})
+    };
+    const putRes=await fetch(apiBase,{method:'PUT',headers,body:JSON.stringify(body)});
+    if(putRes.ok){
+      toast(`✓ GitHub に保存しました（${records.length}件）`);
+    } else {
+      const err=await putRes.json().catch(()=>({}));
+      if(putRes.status===401){
+        localStorage.removeItem(GH_TOKEN_KEY);
+        toast('⚠ トークンが無効です。再設定してください。');
+        showGHTokenModal();
+      } else {
+        toast('⚠ GitHub保存失敗: '+(err.message||putRes.status));
+      }
+    }
+  } catch(e){
+    toast('⚠ エラー: '+e.message);
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='🚀 GitHubに保存';}
+  }
+}
+
+// ===== GitHub トークン管理 =====
+function showGHTokenModal(){
+  const overlay=document.getElementById('gh-token-overlay');
+  overlay.style.display='flex';
+  const input=document.getElementById('gh-token-input');
+  const status=document.getElementById('gh-token-status');
+  const saved=localStorage.getItem(GH_TOKEN_KEY);
+  if(saved){
+    input.value='';
+    input.placeholder='設定済み（変更する場合のみ入力）';
+    status.innerHTML='<span style="color:var(--green);">✓ トークン設定済み</span>';
+  } else {
+    input.placeholder='ghp_xxxxxxxxxxxxxxxxxxxx';
+    status.innerHTML='<span style="color:var(--text3);">未設定</span>';
+  }
+  setTimeout(()=>{ if(!saved) input.focus(); },100);
+}
+
+function closeGHTokenModal(e){
+  if(e&&e.target!==document.getElementById('gh-token-overlay')) return;
+  document.getElementById('gh-token-overlay').style.display='none';
+}
+
+function saveGHToken(){
+  const val=document.getElementById('gh-token-input').value.trim();
+  if(!val){
+    if(localStorage.getItem(GH_TOKEN_KEY)){
+      document.getElementById('gh-token-overlay').style.display='none';
+      return;
+    }
+    toast('トークンを入力してください'); return;
+  }
+  localStorage.setItem(GH_TOKEN_KEY,val);
+  document.getElementById('gh-token-status').innerHTML='<span style="color:var(--green);">✓ 保存しました</span>';
+  document.getElementById('gh-token-input').value='';
+  document.getElementById('gh-token-input').placeholder='設定済み（変更する場合のみ入力）';
+  toast('✓ GitHub トークンを保存しました');
+  setTimeout(()=>{ document.getElementById('gh-token-overlay').style.display='none'; },800);
+}
+
+function clearGHToken(){
+  if(!confirm('GitHub トークンを削除しますか？')) return;
+  localStorage.removeItem(GH_TOKEN_KEY);
+  document.getElementById('gh-token-input').value='';
+  document.getElementById('gh-token-input').placeholder='ghp_xxxxxxxxxxxxxxxxxxxx';
+  document.getElementById('gh-token-status').innerHTML='<span style="color:var(--text3);">削除しました</span>';
+  toast('GitHub トークンを削除しました');
 }
 
 function importCSV(e){
