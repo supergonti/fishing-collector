@@ -402,12 +402,10 @@ function applyFilters(){
   const selSpots   = getSelectedDD('spot');
 
   filtered = allRecords.filter(r=>{
-    // キーワードAND検索（魚種・釣り場・釣法のみ）
+    // キーワードOR検索（魚種・釣り場・釣法のみ、スペース区切りでいずれか一致）
     if(keywords.length){
-      for(const kw of keywords){
-        const target = [r.species, r.spot, r.method].join(' ').toLowerCase();
-        if(!target.includes(kw)) return false;
-      }
+      const target = [r.species, r.spot, r.method].join(' ').toLowerCase();
+      if(!keywords.some(kw => target.includes(kw))) return false;
     }
     // 魚種（AND = 複数選択は「いずれかに該当」）
     if(selSpecies.size && !selSpecies.has(r.species)) return false;
