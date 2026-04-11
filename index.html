@@ -17,37 +17,84 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:var(--bg);font-family:'Yu Gothic UI','Meiryo UI','Hiragino Sans',sans-serif;color:var(--text);min-height:100vh;}
 
-/* ─── ヘッダー ─── */
-.header{background:linear-gradient(135deg,var(--primary),var(--primary2));padding:14px 24px;color:#fff;display:flex;align-items:center;gap:14px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-.header-icon{font-size:2rem;}
-.header-title{font-size:1.4rem;font-weight:700;letter-spacing:2px;}
-.header-sub{font-size:.78rem;color:#85c1e9;margin-top:2px;}
-
 /* ─── ローディング ─── */
 #loading-bar{background:var(--accent);height:3px;width:0;transition:width .4s;position:fixed;top:0;left:0;z-index:999;}
 #loading-msg{text-align:center;padding:40px;color:var(--text3);font-size:1rem;}
 
-/* ─── 統計バー ─── */
-.stats-wrap{padding:12px 20px 0;}
-.stats-bar{display:flex;gap:10px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);padding:10px 14px;margin-bottom:10px;}
-.sv{font-size:1.4rem;font-weight:700;color:var(--accent);}
-.sl{font-size:.72rem;color:var(--text3);margin-top:1px;letter-spacing:.3px;}
-.s-div{width:1px;background:var(--border);margin:0 2px;}
-.env-stat .sv{color:var(--teal);}
+/* ─── ヘッダー ─── */
+.header{background:linear-gradient(135deg,var(--primary),var(--primary2));padding:10px 16px;color:#fff;display:flex;align-items:center;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+.header-icon{font-size:1.6rem;line-height:1;}
+.header-title{font-size:1.2rem;font-weight:700;letter-spacing:2px;}
 
-/* ─── フィルターバー ─── */
-.filter-wrap{padding:0 20px 8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
-.filter-in{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 11px;font-family:inherit;font-size:13px;color:var(--text);outline:none;}
+/* ─── 折りたたみセクション共通 ─── */
+.section{margin:8px 10px 0;}
+details.panel{background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);overflow:hidden;}
+details.panel summary{
+  list-style:none;display:flex;align-items:center;justify-content:space-between;
+  padding:8px 14px;cursor:pointer;font-size:.85rem;font-weight:700;
+  color:var(--primary);background:var(--surface);user-select:none;
+}
+details.panel summary::-webkit-details-marker{display:none;}
+details.panel summary::after{content:'▾';font-size:.8rem;color:var(--text3);transition:transform .2s;}
+details.panel[open] summary::after{transform:rotate(180deg);}
+details.panel summary:hover{background:#f5f8fb;}
+.panel-body{padding:10px 14px 12px;border-top:1px solid var(--border2);}
+
+/* ─── 各種情報 ─── */
+.info-sub{font-size:.75rem;color:var(--text3);margin-bottom:8px;line-height:1.6;}
+.stats-row{display:flex;gap:16px;flex-wrap:wrap;align-items:center;}
+.stat-item{text-align:center;}
+.sv{font-size:1.3rem;font-weight:700;color:var(--accent);}
+.sl{font-size:.7rem;color:var(--text3);margin-top:1px;}
+
+/* ─── 絞り込みバー ─── */
+.filter-grid{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+.filter-in{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:7px 10px;font-family:inherit;font-size:13px;color:var(--text);outline:none;}
 .filter-in:focus{border-color:var(--accent);}
-.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:0;border-radius:7px;font:500 .85rem inherit;color:#fff;cursor:pointer;transition:opacity .15s;}
+#filter-q{width:160px;}
+
+/* ─── チェックボックス型ドロップダウン ─── */
+.multi-dd{position:relative;display:inline-block;}
+.multi-dd-btn{
+  display:inline-flex;align-items:center;gap:6px;justify-content:space-between;
+  min-width:130px;padding:7px 10px;background:var(--surface);
+  border:1px solid var(--border2);border-radius:6px;font-family:inherit;
+  font-size:13px;color:var(--text);cursor:pointer;user-select:none;
+}
+.multi-dd-btn:hover{border-color:var(--accent);}
+.multi-dd-btn.active{border-color:var(--accent);background:#f0f7ff;}
+.dd-arrow{font-size:.7rem;color:var(--text3);transition:transform .2s;flex-shrink:0;}
+.multi-dd.open .dd-arrow{transform:rotate(180deg);}
+.multi-dd-list{
+  display:none;position:absolute;top:calc(100% + 4px);left:0;
+  background:var(--surface);border:1px solid var(--border2);border-radius:8px;
+  box-shadow:0 4px 16px rgba(0,0,0,.12);z-index:200;
+  min-width:160px;max-width:220px;max-height:260px;overflow-y:auto;padding:4px 0;
+}
+.multi-dd.open .multi-dd-list{display:block;}
+.dd-search{padding:6px 10px;border-bottom:1px solid var(--border);}
+.dd-search input{width:100%;border:1px solid var(--border2);border-radius:5px;padding:4px 8px;font-size:12px;outline:none;font-family:inherit;}
+.dd-item{display:flex;align-items:center;gap:8px;padding:6px 12px;cursor:pointer;font-size:13px;white-space:nowrap;}
+.dd-item:hover{background:#f0f7ff;}
+.dd-item input[type=checkbox]{width:14px;height:14px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+.dd-clear{padding:5px 12px;font-size:.75rem;color:var(--accent);cursor:pointer;border-top:1px solid var(--border);display:block;text-align:center;}
+.dd-clear:hover{background:#f0f7ff;}
+
+/* ─── ボタン ─── */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:0;border-radius:7px;font:500 .85rem inherit;color:#fff;cursor:pointer;transition:opacity .15s;}
 .btn:hover{opacity:.85;}
 .btn-reset{background:#888;}
 .btn-dl{background:var(--green);}
-.tag-match{background:var(--env-bg);border:1px solid var(--env-bd);border-radius:12px;padding:2px 10px;font-size:.78rem;color:var(--env-hd);font-weight:600;}
+
+/* ─── 件数表示 ─── */
+.count-badge{
+  background:var(--env-bg);border:1px solid var(--env-bd);border-radius:12px;
+  padding:3px 11px;font-size:.8rem;color:var(--env-hd);font-weight:700;white-space:nowrap;
+}
 
 /* ─── テーブルエリア ─── */
-.table-wrap{padding:0 20px 20px;overflow-x:auto;}
-.table-scroll{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 280px);border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);}
+.table-section{margin:8px 10px 12px;}
+.table-scroll{overflow-x:auto;overflow-y:auto;max-height:calc(100vh - 210px);border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);}
 table{width:100%;border-collapse:collapse;font-size:.84rem;}
 thead th{position:sticky;top:0;background:var(--primary);color:#fff;padding:9px 10px;text-align:left;white-space:nowrap;font-size:.78rem;letter-spacing:.4px;z-index:10;}
 thead th.env-th{background:var(--env-hd);}
@@ -59,9 +106,12 @@ tbody tr:hover td{background:#f4f8fb;}
 tbody tr:hover td.env-td{background:#d8f0f3;}
 td{padding:7px 9px;white-space:nowrap;vertical-align:middle;}
 td.env-td{background:var(--env-bg);color:#0a4a57;}
+.col-species{min-width:96px;}
+.col-spot{min-width:80px;max-width:100px;overflow:hidden;text-overflow:ellipsis;}
 .dt{font-size:.8rem;color:var(--text2);}
 .sp{font-weight:600;color:var(--primary);}
 .st-badge{background:var(--badge-bg);border:1px solid var(--badge-bd);border-radius:8px;padding:1px 7px;font-size:.75rem;color:var(--primary);font-weight:600;}
+.st-other{background:#f0f0f0;border:1px solid #ccc;border-radius:8px;padding:1px 7px;font-size:.75rem;color:#888;font-weight:500;}
 .tide-badge{border-radius:8px;padding:1px 7px;font-size:.75rem;font-weight:600;}
 .tide-大潮{background:#fdebd0;color:#784212;}
 .tide-中潮{background:#d5f5e3;color:#1e8449;}
@@ -69,147 +119,113 @@ td.env-td{background:var(--env-bg);color:#0a4a57;}
 .tide-長潮,.tide-若潮{background:#e8daef;color:#6c3483;}
 .moon-badge{font-size:.8rem;}
 .no-data{color:var(--text3);}
-.src-badge{border-radius:8px;padding:1px 7px;font-size:.73rem;font-weight:600;}
-.src-ig{background:#f3e5f5;color:#6a1b9a;}
-.src-m{background:#e8f5e9;color:#1b5e20;}
 .empty-state{text-align:center;padding:60px 20px;color:var(--text3);}
 .empty-state .ei{font-size:3rem;margin-bottom:12px;}
 .sort-arrow{font-size:.7rem;margin-left:2px;opacity:.6;}
 .active-sort .sort-arrow{opacity:1;}
-
-/* ─── フッター情報 ─── */
-.footer-info{text-align:center;padding:8px;font-size:.75rem;color:var(--text3);}
 </style>
 </head>
 <body>
 <div id="loading-bar"></div>
 
+<!-- ヘッダー -->
 <div class="header">
   <span class="header-icon">🐟</span>
-  <div>
-    <div class="header-title">統合釣果データベース V6.0</div>
-    <div class="header-sub">天気・水温・潮汐・月齢を自動結合 ／ 毎週月曜自動更新 ／ Open-Meteo API</div>
-  </div>
+  <div class="header-title">統合釣果データベース V6.0</div>
 </div>
 
 <div id="loading-msg">📡 データを読み込み中...</div>
 <div id="main-content" style="display:none;">
 
-  <!-- 統計バー -->
-  <div class="stats-wrap">
-    <div class="stats-bar">
-      <div style="text-align:center;">
-        <div class="sv" id="s-total">—</div>
-        <div class="sl">総釣果件数</div>
+  <!-- 各種情報 -->
+  <div class="section">
+    <details class="panel" id="panel-info">
+      <summary>各種情報</summary>
+      <div class="panel-body">
+        <div class="info-sub">天気・水温・潮汐・月齢を自動結合 ／ 毎週月曜自動更新 ／ Open-Meteo API</div>
+        <div class="stats-row">
+          <div class="stat-item">
+            <div class="sv" id="s-total">—</div>
+            <div class="sl">総釣果件数</div>
+          </div>
+          <div class="stat-item">
+            <div class="sv" id="s-updated">—</div>
+            <div class="sl">最終更新日</div>
+          </div>
+        </div>
       </div>
-      <div class="s-div"></div>
-      <div style="text-align:center;">
-        <div class="sv" id="s-species">—</div>
-        <div class="sl">魚種数</div>
-      </div>
-      <div class="s-div"></div>
-      <div style="text-align:center;">
-        <div class="sv" id="s-maxsize">—</div>
-        <div class="sl">最大サイズ</div>
-      </div>
-      <div class="s-div"></div>
-      <div style="text-align:center;">
-        <div class="sv" id="s-maxweight">—</div>
-        <div class="sl">最大重量</div>
-      </div>
-      <div class="s-div"></div>
-      <div style="text-align:center;">
-        <div class="sv" id="s-matched">—</div>
-        <div class="sl">環境データ結合済</div>
-      </div>
-      <div class="s-div"></div>
-      <div style="text-align:center;" class="env-stat">
-        <div class="sv" id="s-avg-temp">—</div>
-        <div class="sl">平均気温（計測）</div>
-      </div>
-      <div class="s-div"></div>
-      <div style="text-align:center;" class="env-stat">
-        <div class="sv" id="s-avg-water">—</div>
-        <div class="sl">平均水温（計測）</div>
-      </div>
-      <div class="s-div"></div>
-      <div style="text-align:center;">
-        <div class="sv" id="s-updated">—</div>
-        <div class="sl">最終更新日</div>
-      </div>
-    </div>
+    </details>
   </div>
 
-  <!-- フィルターバー -->
-  <div class="filter-wrap">
-    <input type="text" class="filter-in" id="filter-q" placeholder="🔍 キーワード絞り込み" oninput="applyFilters()" style="width:180px;">
-    <select class="filter-in" id="filter-species" onchange="applyFilters()">
-      <option value="">🐟 全魚種</option>
-    </select>
-    <select class="filter-in" id="filter-tide" onchange="applyFilters()">
-      <option value="">🌊 全潮回り</option>
-      <option value="大潮">大潮</option>
-      <option value="中潮">中潮</option>
-      <option value="小潮">小潮</option>
-      <option value="長潮">長潮</option>
-      <option value="若潮">若潮</option>
-    </select>
-    <select class="filter-in" id="filter-moon" onchange="applyFilters()">
-      <option value="">🌕 全月相</option>
-      <option value="新月">新月</option>
-      <option value="三日月">三日月</option>
-      <option value="上弦">上弦</option>
-      <option value="十日夜">十日夜</option>
-      <option value="満月">満月</option>
-      <option value="十六夜">十六夜</option>
-      <option value="下弦">下弦</option>
-      <option value="二十六夜">二十六夜</option>
-      <option value="晦日">晦日</option>
-    </select>
-    <select class="filter-in" id="filter-station" onchange="applyFilters()">
-      <option value="">📍 全地点</option>
-      <option value="室戸">室戸</option>
-      <option value="高知">高知</option>
-      <option value="足摺">足摺</option>
-      <option value="宇和島">宇和島</option>
-      <option value="松山">松山</option>
-      <option value="来島">来島</option>
-      <option value="高松">高松</option>
-      <option value="阿南">阿南</option>
-    </select>
-    <button class="btn btn-reset" onclick="resetFilters()">🔄 リセット</button>
-    <button class="btn btn-dl" onclick="downloadCSV()">📥 CSV保存</button>
-    <span class="tag-match" id="filter-count" style="display:none;"></span>
+  <!-- 絞り込み -->
+  <div class="section">
+    <details class="panel" id="panel-filter" open>
+      <summary>絞り込み</summary>
+      <div class="panel-body">
+        <div class="filter-grid">
+
+          <!-- キーワード -->
+          <input type="text" class="filter-in" id="filter-q" placeholder="🔍 キーワード" oninput="applyFilters()">
+
+          <!-- 魚種（複数選択） -->
+          <div class="multi-dd" id="dd-species">
+            <div class="multi-dd-btn" onclick="toggleDD('species')">
+              <span class="dd-label" id="dd-species-label">🐟 魚種</span>
+              <span class="dd-arrow">▾</span>
+            </div>
+            <div class="multi-dd-list" id="dd-species-list">
+              <div class="dd-search"><input type="text" placeholder="絞り込み検索..." oninput="filterDDItems('species',this.value)"></div>
+              <div id="dd-species-items"></div>
+              <span class="dd-clear" onclick="clearDD('species')">選択をクリア</span>
+            </div>
+          </div>
+
+          <!-- 釣り場（複数選択） -->
+          <div class="multi-dd" id="dd-spot">
+            <div class="multi-dd-btn" onclick="toggleDD('spot')">
+              <span class="dd-label" id="dd-spot-label">📍 釣り場</span>
+              <span class="dd-arrow">▾</span>
+            </div>
+            <div class="multi-dd-list" id="dd-spot-list">
+              <div class="dd-search"><input type="text" placeholder="絞り込み検索..." oninput="filterDDItems('spot',this.value)"></div>
+              <div id="dd-spot-items"></div>
+              <span class="dd-clear" onclick="clearDD('spot')">選択をクリア</span>
+            </div>
+          </div>
+
+          <!-- 件数表示 -->
+          <span class="count-badge" id="filter-count">—</span>
+
+          <!-- リセット -->
+          <button class="btn btn-reset" onclick="resetFilters()">🔄 リセット</button>
+
+          <!-- CSV保存 -->
+          <button class="btn btn-dl" onclick="downloadCSV()">📥 CSV保存</button>
+
+        </div>
+      </div>
+    </details>
   </div>
 
   <!-- テーブル -->
-  <div class="table-wrap">
+  <div class="table-section">
     <div class="table-scroll">
       <table id="main-table">
         <thead>
           <tr>
-            <!-- 釣果列 -->
             <th class="sort-th" onclick="setSort('date')">投稿日<span class="sort-arrow" id="arr-date"></span></th>
-            <th class="sort-th" onclick="setSort('species')">魚種<span class="sort-arrow" id="arr-species"></span></th>
+            <th class="sort-th col-species" onclick="setSort('species')">魚種<span class="sort-arrow" id="arr-species"></span></th>
             <th class="sort-th" onclick="setSort('size_cm')">cm<span class="sort-arrow" id="arr-size_cm"></span></th>
             <th class="sort-th" onclick="setSort('weight_kg')">kg<span class="sort-arrow" id="arr-weight_kg"></span></th>
             <th>匹</th>
-            <th>エサ/ルアー</th>
             <th>釣法</th>
-            <th>釣り場</th>
+            <th class="col-spot">釣り場</th>
             <th>観測地点</th>
-            <th>手動潮汐</th>
-            <th>手動天気</th>
-            <th>手動水温</th>
-            <th>メモ</th>
-            <th>ソース</th>
-            <!-- 環境データ列（計測値） -->
             <th class="env-th sort-th" onclick="setSort('潮汐_計測')">潮汐<span class="sort-arrow" id="arr-潮汐_計測"></span></th>
-            <th class="env-th sort-th" onclick="setSort('月齢')">月齢<span class="sort-arrow" id="arr-月齢"></span></th>
             <th class="env-th">月相</th>
-            <th class="env-th sort-th" onclick="setSort('気温_平均')">気温℃<span class="sort-arrow" id="arr-気温_平均"></span></th>
             <th class="env-th sort-th" onclick="setSort('水温_計測')">水温℃<span class="sort-arrow" id="arr-水温_計測"></span></th>
             <th class="env-th">天気</th>
+            <th class="env-th sort-th" onclick="setSort('気温_平均')">気温℃<span class="sort-arrow" id="arr-気温_平均"></span></th>
             <th class="env-th sort-th" onclick="setSort('風速_最大')">風速m/s<span class="sort-arrow" id="arr-風速_最大"></span></th>
             <th class="env-th">風向</th>
             <th class="env-th sort-th" onclick="setSort('最大波高')">波高m<span class="sort-arrow" id="arr-最大波高"></span></th>
@@ -224,7 +240,7 @@ td.env-td{background:var(--env-bg);color:#0a4a57;}
       </div>
     </div>
   </div>
-  <div class="footer-info" id="footer-info"></div>
+
 </div>
 
 <script>
@@ -286,51 +302,119 @@ function initUI(){
   document.getElementById('loading-msg').style.display = 'none';
   document.getElementById('main-content').style.display = '';
 
-  // 魚種フィルター
-  const sel = document.getElementById('filter-species');
+  // 魚種ドロップダウン構築
   const species = [...new Set(allRecords.map(r=>r.species).filter(Boolean))].sort();
-  species.forEach(s=>{ const o=document.createElement('option'); o.value=s; o.textContent=s; sel.appendChild(o); });
+  buildDDItems('species', species);
+
+  // 釣り場ドロップダウン構築（件数多い順）
+  const spotCount = {};
+  allRecords.forEach(r=>{ if(r.spot) spotCount[r.spot] = (spotCount[r.spot]||0)+1; });
+  const spots = Object.entries(spotCount).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
+  buildDDItems('spot', spots);
 
   applyFilters();
   updateStats(allRecords);
+
+  // ドロップダウン外クリックで閉じる
+  document.addEventListener('click', e=>{
+    if(!e.target.closest('.multi-dd')) closeAllDD();
+  });
+}
+
+// ─── チェックボックスドロップダウン ──────────────────────
+function buildDDItems(type, values){
+  const container = document.getElementById(`dd-${type}-items`);
+  container.innerHTML = values.map(v=>`
+    <label class="dd-item">
+      <input type="checkbox" value="${escHtml(v)}" onchange="applyFilters()">
+      <span>${escHtml(v)}</span>
+    </label>`).join('');
+}
+
+function filterDDItems(type, q){
+  const items = document.querySelectorAll(`#dd-${type}-items .dd-item`);
+  const lq = q.toLowerCase();
+  items.forEach(item=>{
+    const text = item.querySelector('span').textContent.toLowerCase();
+    item.style.display = text.includes(lq) ? '' : 'none';
+  });
+}
+
+function toggleDD(type){
+  const dd = document.getElementById(`dd-${type}`);
+  const wasOpen = dd.classList.contains('open');
+  closeAllDD();
+  if(!wasOpen) dd.classList.add('open');
+}
+
+function closeAllDD(){
+  document.querySelectorAll('.multi-dd.open').forEach(d=>d.classList.remove('open'));
+}
+
+function clearDD(type){
+  document.querySelectorAll(`#dd-${type}-items input`).forEach(cb=>cb.checked=false);
+  updateDDLabel(type);
+  applyFilters();
+}
+
+function getSelectedDD(type){
+  return new Set([...document.querySelectorAll(`#dd-${type}-items input:checked`)].map(cb=>cb.value));
+}
+
+function updateDDLabel(type){
+  const sel = getSelectedDD(type);
+  const label = document.getElementById(`dd-${type}-label`);
+  const icon = type==='species' ? '🐟' : '📍';
+  const name = type==='species' ? '魚種' : '釣り場';
+  if(sel.size===0){
+    label.textContent = `${icon} ${name}`;
+    document.getElementById(`dd-${type}`).querySelector('.multi-dd-btn').classList.remove('active');
+  } else if(sel.size===1){
+    label.textContent = [...sel][0];
+    document.getElementById(`dd-${type}`).querySelector('.multi-dd-btn').classList.add('active');
+  } else {
+    label.textContent = `${name}（${sel.size}件）`;
+    document.getElementById(`dd-${type}`).querySelector('.multi-dd-btn').classList.add('active');
+  }
 }
 
 // ─── フィルター ──────────────────────────────────────────
 function applyFilters(){
-  const q       = (document.getElementById('filter-q').value||'').toLowerCase();
-  const sp      = document.getElementById('filter-species').value;
-  const tide    = document.getElementById('filter-tide').value;
-  const moon    = document.getElementById('filter-moon').value;
-  const station = document.getElementById('filter-station').value;
+  updateDDLabel('species');
+  updateDDLabel('spot');
+
+  const rawQ    = (document.getElementById('filter-q').value||'').trim();
+  const keywords = rawQ ? rawQ.toLowerCase().split(/\s+/).filter(Boolean) : [];
+  const selSpecies = getSelectedDD('species');
+  const selSpots   = getSelectedDD('spot');
 
   filtered = allRecords.filter(r=>{
-    if(sp      && r.species      !== sp)      return false;
-    if(tide    && r['潮汐_計測'] !== tide)    return false;
-    if(moon    && r['月相']      !== moon)    return false;
-    if(station && r.nearest_station !== station) return false;
-    if(q && !([r.species,r.spot,r.bait,r.method,r.nearest_station,r.memo,r['天気_計測'],r['月相']]
-              .join(' ').toLowerCase().includes(q))) return false;
+    // キーワードAND検索（魚種・釣り場・釣法のみ）
+    if(keywords.length){
+      for(const kw of keywords){
+        const target = [r.species, r.spot, r.method].join(' ').toLowerCase();
+        if(!target.includes(kw)) return false;
+      }
+    }
+    // 魚種（AND = 複数選択は「いずれかに該当」）
+    if(selSpecies.size && !selSpecies.has(r.species)) return false;
+    // 釣り場
+    if(selSpots.size && !selSpots.has(r.spot)) return false;
     return true;
   });
 
-  const tag = document.getElementById('filter-count');
-  const isFiltered = q||sp||tide||moon||station;
-  if(isFiltered){
-    tag.textContent = `${filtered.length}件 / ${allRecords.length}件`;
-    tag.style.display = '';
-  }else{
-    tag.style.display = 'none';
-  }
+  // 件数表示（常に表示）
+  document.getElementById('filter-count').textContent =
+    `${filtered.length}件 / ${allRecords.length}件`;
 
   renderTable();
 }
 
 function resetFilters(){
   document.getElementById('filter-q').value = '';
-  document.getElementById('filter-species').value = '';
-  document.getElementById('filter-tide').value = '';
-  document.getElementById('filter-moon').value = '';
-  document.getElementById('filter-station').value = '';
+  clearDD('species');
+  clearDD('spot');
+  // clearDD内でapplyFiltersが呼ばれるので最後にまとめて呼ぶ
   applyFilters();
 }
 
@@ -341,7 +425,6 @@ function setSort(key){
 }
 
 function updateSortArrows(){
-  const numKeys = ['size_cm','weight_kg','月齢','気温_平均','水温_計測','風速_最大','最大波高'];
   document.querySelectorAll('.sort-th').forEach(th=>th.classList.remove('active-sort'));
   document.querySelectorAll('[id^="arr-"]').forEach(el=>{
     const k = el.id.replace('arr-','');
@@ -353,6 +436,7 @@ function updateSortArrows(){
 }
 
 // ─── テーブル描画 ────────────────────────────────────────
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function dv(v){ return (v!==''&&v!==null&&v!==undefined&&v!=='0'&&v!==0) ? v : '<span class="no-data">—</span>'; }
 function dvNum(v){ return (v!==''&&v!==null&&v!==undefined) ? v : '<span class="no-data">—</span>'; }
 
@@ -366,14 +450,13 @@ function moonBadge(phase){
   return phase ? `<span class="moon-badge">${map[phase]||''} ${phase}</span>` : '<span class="no-data">—</span>';
 }
 
-function srcBadge(s){
-  if(!s) return '';
-  const cls = s==='Instagram'?'src-ig':s==='手動入力'?'src-m':'';
-  return `<span class="src-badge ${cls}">${s}</span>`;
+function stationBadge(s){
+  if(!s) return '<span class="st-other">その他</span>';
+  return `<span class="st-badge">${s}</span>`;
 }
 
 function renderTable(){
-  const numKeys = new Set(['size_cm','weight_kg','月齢','気温_平均','水温_計測','風速_最大','最大波高']);
+  const numKeys = new Set(['size_cm','weight_kg','気温_平均','水温_計測','風速_最大','最大波高']);
   const list = [...filtered].sort((a,b)=>{
     let av = a[sortKey]||'', bv = b[sortKey]||'';
     if(numKeys.has(sortKey)){ av=parseFloat(av)||0; bv=parseFloat(bv)||0; }
@@ -389,73 +472,41 @@ function renderTable(){
   if(!list.length){
     tbody.innerHTML='';
     empty.style.display='';
-    document.getElementById('footer-info').textContent='';
     return;
   }
   empty.style.display='none';
 
   tbody.innerHTML = list.map(r=>{
-    const hasEnv = r['潮汐_計測']||r['月齢']||r['気温_平均']||r['水温_計測'];
-    const envClass = hasEnv ? 'env-td' : '';
+    const hasEnv = r['潮汐_計測']||r['気温_平均']||r['水温_計測'];
+    const ec = hasEnv ? 'env-td' : '';
     return `<tr>
       <td class="dt">${r.date ? r.date.slice(2).replace(/-/g,'/') : '—'}</td>
-      <td class="sp">${r.species||'—'}</td>
+      <td class="sp col-species" style="overflow:hidden;text-overflow:ellipsis;" title="${escHtml(r.species||'')}">${r.species||'—'}</td>
       <td>${dvNum(r.size_cm)}</td>
       <td>${dvNum(r.weight_kg)}</td>
       <td>${r.count||1}</td>
-      <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;" title="${r.bait||''}">${r.bait||'—'}</td>
-      <td style="font-size:.78rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;" title="${r.method||''}">${r.method||'—'}</td>
-      <td style="max-width:100px;overflow:hidden;text-overflow:ellipsis;" title="${r.spot||''}">${r.spot||'—'}</td>
-      <td>${r.nearest_station ? `<span class="st-badge">${r.nearest_station}</span>` : '<span class="no-data">—</span>'}</td>
-      <td style="font-size:.78rem;">${r.tide||'—'}</td>
-      <td style="font-size:.78rem;">${r.weather||'—'}</td>
-      <td>${r.water_temp||'—'}</td>
-      <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;font-size:.78rem;" title="${r.memo||''}">${r.memo||'—'}</td>
-      <td>${srcBadge(r.source)}</td>
-      <td class="${envClass}">${tideBadge(r['潮汐_計測'])}</td>
-      <td class="${envClass}">${r['月齢']||'<span class="no-data">—</span>'}</td>
-      <td class="${envClass}">${moonBadge(r['月相'])}</td>
-      <td class="${envClass}">${r['気温_平均'] ? r['気温_平均']+'℃' : '<span class="no-data">—</span>'}</td>
-      <td class="${envClass}">${r['水温_計測'] ? r['水温_計測']+'℃' : '<span class="no-data">—</span>'}</td>
-      <td class="${envClass}" style="font-size:.78rem;">${r['天気_計測']||'<span class="no-data">—</span>'}</td>
-      <td class="${envClass}">${r['風速_最大']||'<span class="no-data">—</span>'}</td>
-      <td class="${envClass}">${r['風向_計測']||'<span class="no-data">—</span>'}</td>
-      <td class="${envClass}">${r['最大波高']||'<span class="no-data">—</span>'}</td>
-      <td class="${envClass}">${r['波向']||'<span class="no-data">—</span>'}</td>
+      <td style="font-size:.78rem;max-width:110px;overflow:hidden;text-overflow:ellipsis;" title="${escHtml(r.method||'')}">${r.method||'—'}</td>
+      <td class="col-spot" title="${escHtml(r.spot||'')}">${r.spot||'—'}</td>
+      <td>${stationBadge(r.nearest_station)}</td>
+      <td class="${ec}">${tideBadge(r['潮汐_計測'])}</td>
+      <td class="${ec}">${moonBadge(r['月相'])}</td>
+      <td class="${ec}">${r['水温_計測'] ? r['水温_計測']+'℃' : '<span class="no-data">—</span>'}</td>
+      <td class="${ec}" style="font-size:.78rem;">${r['天気_計測']||'<span class="no-data">—</span>'}</td>
+      <td class="${ec}">${r['気温_平均'] ? r['気温_平均']+'℃' : '<span class="no-data">—</span>'}</td>
+      <td class="${ec}">${r['風速_最大']||'<span class="no-data">—</span>'}</td>
+      <td class="${ec}">${r['風向_計測']||'<span class="no-data">—</span>'}</td>
+      <td class="${ec}">${r['最大波高']||'<span class="no-data">—</span>'}</td>
+      <td class="${ec}">${r['波向']||'<span class="no-data">—</span>'}</td>
     </tr>`;
   }).join('');
-
-  document.getElementById('footer-info').textContent =
-    `表示: ${list.length}件 ／ 総件数: ${allRecords.length}件`;
 }
 
 // ─── 統計更新 ────────────────────────────────────────────
 function updateStats(recs){
-  const speciesSet = new Set();
-  let maxSize=0, maxWeight=0, matchedCount=0;
-  let tempSum=0, tempN=0, waterSum=0, waterN=0;
   let latestDate = '';
-
-  recs.forEach(r=>{
-    if(r.species) speciesSet.add(r.species);
-    const sz = parseFloat(r.size_cm)||0;
-    const wt = parseFloat(r.weight_kg)||0;
-    if(sz > maxSize)    maxSize    = sz;
-    if(wt > maxWeight)  maxWeight  = wt;
-    if(r['潮汐_計測']||r['気温_平均']||r['水温_計測']) matchedCount++;
-    if(r['気温_平均']){ tempSum  += parseFloat(r['気温_平均'])||0; tempN++; }
-    if(r['水温_計測']){ waterSum += parseFloat(r['水温_計測'])||0; waterN++; }
-    if(r.date > latestDate) latestDate = r.date;
-  });
-
-  document.getElementById('s-total').textContent   = recs.length;
-  document.getElementById('s-species').textContent = speciesSet.size;
-  document.getElementById('s-maxsize').textContent = maxSize ? maxSize+'cm' : '—';
-  document.getElementById('s-maxweight').textContent = maxWeight ? maxWeight+'kg' : '—';
-  document.getElementById('s-matched').textContent = matchedCount + '件';
-  document.getElementById('s-avg-temp').textContent  = tempN  ? (Math.round(tempSum/tempN*10)/10)+'℃' : '—';
-  document.getElementById('s-avg-water').textContent = waterN ? (Math.round(waterSum/waterN*10)/10)+'℃' : '—';
-  document.getElementById('s-updated').textContent  = latestDate || '—';
+  recs.forEach(r=>{ if(r.date > latestDate) latestDate = r.date; });
+  document.getElementById('s-total').textContent   = recs.length + '件';
+  document.getElementById('s-updated').textContent = latestDate || '—';
 }
 
 // ─── CSV ダウンロード ────────────────────────────────────
