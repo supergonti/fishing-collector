@@ -122,7 +122,7 @@ body{background:var(--bg);font-family:'Yu Gothic UI','Meiryo UI','Hiragino Sans'
 </div>
 <div class="tab-nav">
   <button class="tab-btn active" onclick="switchTab('update')">🔄 データ更新</button>
-  <button class="tab-btn" onclick="switchTab('csv')">📥 CSV出力</button>
+  <button class="tab-btn" onclick="switchTab('csv')">🧪 テスト用エクスポート</button>
   <button class="tab-btn" onclick="switchTab('stations')">📍 地点管理</button>
   <button class="tab-btn" onclick="switchTab('summary')">📊 集計確認</button>
 </div>
@@ -154,25 +154,28 @@ body{background:var(--bg);font-family:'Yu Gothic UI','Meiryo UI','Hiragino Sans'
   </div>
 </div>
 <div class="tab-content" id="tab-csv">
+  <div class="card" style="background:#fef9e7;border:2px solid #f9e79f;">
+    <div class="card-title" style="color:#9a7d0a;">⚠️ このタブはテスト・検証専用です</div>
+    <p style="font-size:.85rem;color:#7d6608;margin-bottom:6px;font-weight:600;">本番の環境データCSVは GitHub Actions が毎週月曜9:00 JSTに自動生成します。</p>
+    <p style="font-size:.82rem;color:#9a7d0a;">ここからエクスポートされるファイルはタイムスタンプ付きの別名で保存されるため、本番データと競合しません。<br>
+    V6.1で自動保存機能は完全廃止予定です。</p>
+  </div>
   <div class="card">
-    <div class="card-title">自動保存先フォルダ</div>
-    <p style="font-size:.82rem;color:var(--text2);margin-bottom:10px;">データ更新完了時に以下のファイルが自動保存されます:<br>
-      <code style="background:#eee;padding:1px 6px;border-radius:3px;">fishing_condition_db.csv</code>（統合CSV）＋
-      <code style="background:#eee;padding:1px 6px;border-radius:3px;">fishing_condition_db.json</code>（バックアップ）
-    </p>
+    <div class="card-title">保存先フォルダ（任意設定）</div>
+    <p style="font-size:.82rem;color:var(--text2);margin-bottom:10px;">テスト用エクスポートの保存先を指定できます。未設定の場合はブラウザのダウンロードフォルダに保存されます。</p>
     <div class="btn-row">
       <button class="btn btn-save" onclick="selectSaveDir()">📁 保存先フォルダを選択</button>
       <span id="save-dir-label" style="font-size:.85rem;color:var(--text2);align-self:center;">未設定（ダウンロードフォルダに保存）</span>
     </div>
   </div>
   <div class="card">
-    <div class="card-title">統合CSV出力（釣果DB結合用）</div>
-    <p style="font-size:.82rem;color:var(--text2);margin-bottom:12px;">日付×地点をキーに天気・水温・波浪・潮汐・月齢を1ファイルに統合。釣果データベースとの結合に使用します。</p>
+    <div class="card-title">🧪 テスト用エクスポート（統合CSV）</div>
+    <p style="font-size:.82rem;color:var(--text2);margin-bottom:12px;">他システムでの検証用にタイムスタンプ付きCSV/JSONをエクスポートします。本番用ではありません。</p>
     <div class="btn-row">
-      <button class="btn btn-main" onclick="exportIntegratedCSV()">📊 統合CSV出力</button>
-      <button class="btn btn-save" onclick="exportIntegratedJSON()">💾 JSONバックアップ</button>
+      <button class="btn btn-main" onclick="exportIntegratedCSV()">🧪 統合CSVエクスポート</button>
+      <button class="btn btn-save" onclick="exportIntegratedJSON()">💾 JSONエクスポート</button>
     </div>
-    <p style="font-size:.78rem;color:var(--text3);margin-top:6px;">ファイル名: fishing_condition_db.csv / fishing_condition_db.json（固定・上書き）</p>
+    <p style="font-size:.78rem;color:var(--text3);margin-top:6px;">ファイル名: fishing_condition_db_export_YYYYMMDD_HHMM.csv / .json（タイムスタンプ付き）</p>
   </div>
   <div class="card">
     <div class="card-title">個別CSVダウンロード</div>
@@ -274,6 +277,10 @@ function addDays(dateStr,n){
   return localDateStr(d);
 }
 function formatDate(d){return localDateStr(d);}
+function exportTimestamp(){
+  const now=new Date();
+  return `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+}
 function daysBetween(from,to){
   const a=new Date(from+'T12:00:00'),b=new Date(to+'T12:00:00');
   return Math.round((b-a)/(86400000));
@@ -1022,8 +1029,9 @@ async function fetchAll(){
     setProgress(100,'完了');
     log(`\n=== 全データ取得完了 ===`,'head');
     showToast('全データ取得完了');
-    /* Auto-save CSV + JSON */
-    await autoSaveAll();
+    /* Auto-save CSV + JSON — V6.1で廃止: Actions一本化のため自動保存を停止 */
+    // await autoSaveAll();
+    log('※ 自動保存はV6.1で廃止されました。本番CSVはGitHub Actionsが生成します。','warn');
   }catch(e){
     log(`エラー: ${e.message}`,'err');
   }finally{
@@ -1133,9 +1141,10 @@ async function exportIntegratedCSV(){
   }
   const bom='\uFEFF';
   const blob=new Blob([bom+rows.join('\n')],{type:'text/csv;charset=utf-8'});
-  const direct=await saveToDir('fishing_condition_db.csv',blob);
+  const exportName=`fishing_condition_db_export_${exportTimestamp()}.csv`;
+  const direct=await saveToDir(exportName,blob);
   const method=direct?'フォルダに保存':'ダウンロード';
-  log(`統合CSV ${method}完了: ${rows.length-1}行 (${sortedDates.length}日 × ${stations.length}地点)`,'ok');
+  log(`統合CSV ${method}完了: ${exportName} (${rows.length-1}行, ${sortedDates.length}日 × ${stations.length}地点)`,'ok');
   showToast(`統合CSV ${method}完了: ${rows.length-1}行`);
 }
 
@@ -1198,10 +1207,11 @@ async function buildBackupData(){
 async function backupData(){
   const data=await buildBackupData();
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const direct=await saveToDir('fishing_condition_db.json',blob);
+  const exportName=`fishing_condition_db_export_${exportTimestamp()}.json`;
+  const direct=await saveToDir(exportName,blob);
   const method=direct?'フォルダに保存':'ダウンロード';
-  log(`JSONバックアップ ${method}完了`,'ok');
-  showToast(`バックアップ ${method}完了`);
+  log(`JSONエクスポート ${method}完了: ${exportName}`,'ok');
+  showToast(`JSONエクスポート ${method}完了`);
 }
 
 /* Manual JSON export button */
@@ -1209,16 +1219,9 @@ async function exportIntegratedJSON(){
   await backupData();
 }
 
-/* Auto-save: both CSV + JSON after data update */
+/* Auto-save: V6.1で廃止 — 本番CSVはGitHub Actionsが生成するため自動保存は不要 */
 async function autoSaveAll(){
-  log('--- 自動保存開始 ---','head');
-  try{
-    await exportIntegratedCSV();
-    await backupData();
-    log('--- 自動保存完了 ---','ok');
-  }catch(e){
-    log(`自動保存エラー: ${e.message}`,'err');
-  }
+  console.log('[V6.1] autoSaveAll は廃止されました。本番CSVはGitHub Actionsが生成します。');
 }
 
 async function restoreData(){
@@ -1351,8 +1354,9 @@ async function fetchPartial(types){
     setProgress(100,'完了');
     log('\n=== 取得完了 ===','head');
     showToast('取得完了');
-    /* Auto-save CSV + JSON */
-    await autoSaveAll();
+    /* Auto-save CSV + JSON — V6.1で廃止: Actions一本化のため自動保存を停止 */
+    // await autoSaveAll();
+    log('※ 自動保存はV6.1で廃止されました。本番CSVはGitHub Actionsが生成します。','warn');
   }catch(e){log(`エラー: ${e.message}`,'err');}
   finally{
     fetching=false;
