@@ -1,0 +1,47 @@
+# ===================================================================
+# fishing V6.0 プロジェクト .gitignore
+# ===================================================================
+
+# --- テスト用エクスポートファイル（本番と衝突しないよう除外）---
+# condition.html の「🧪 テスト用エクスポート」タブから出力される
+# タイムスタンプ付きファイルは他システムでの検証用。
+# 本番 fishing_condition_db.csv は GitHub Actions が生成するため、
+# このパターンに一致するエクスポート成果物はリポジトリに含めない。
+fishing_condition_db_export_*.csv
+fishing_condition_db_export_*.json
+
+# --- 機密情報（万一流入しても防ぐ）---
+.env
+.env.local
+*.secret
+*.secret.*
+*_credentials.*
+config.local.*
+config.secret.*
+secrets.json
+credentials.json
+token.json
+auth.json
+.github_token
+
+# --- OS・エディタ系 ---
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.bak
+.~lock.*
+
+# --- Node.js / ビルド関連 ---
+node_modules/
+npm-debug.log*
+
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# --- ログ ---
+*.log
