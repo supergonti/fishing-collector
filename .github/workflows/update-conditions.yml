@@ -1,6 +1,11 @@
 name: Update Fishing Conditions
 
 on:
+  push:
+    paths:
+      - 'fishing_data.csv'   # V5.5「GitHubに保存」で fishing_data.csv が更新されたら即時実行
+    branches:
+      - main
   schedule:
     - cron: '0 0 * * 1'   # 毎週月曜 UTC 0:00 (JST 9:00)
   workflow_dispatch:        # 手動実行も可能
