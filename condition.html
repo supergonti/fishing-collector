@@ -298,17 +298,16 @@ function chunkDateRange(fromDate,toDate,chunkSize){
   return chunks;
 }
 
-/* ---------- API endpoint routing (Archive vs Forecast) ---------- */
-function weatherApiUrl(lat,lng,fromDate,toDate){
-  /* Open-Meteo Archive API: 1940 ~ 5日前, Forecast API: 直近~16日先 */
-  const fiveDaysAgo=addDays(today(),-5);
-  if(toDate<=fiveDaysAgo){
-    /* 全期間がアーカイブ範囲 */
-    return `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}`
-      +`&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code`
-      +`&timezone=Asia%2FTokyo&start_date=${fromDate}&end_date=${toDate}`;
-  }
-  /* 直近期間はForecast API（過去数日も含む） */
+/* ---------- API endpoint routing (Archive / Forecast を境界で分割) ---------- */
+/* Open-Meteo Archive API: 5日前までの過去、Forecast API: 直近〜16日先。
+   範囲が両方にまたがる場合は、両方を別々に呼び出して結合する必要がある
+   （toDate だけで分岐すると、古い日が forecast API で取得できず空になる）。 */
+function weatherArchiveUrl(lat,lng,fromDate,toDate){
+  return `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}`
+    +`&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code`
+    +`&timezone=Asia%2FTokyo&start_date=${fromDate}&end_date=${toDate}`;
+}
+function weatherForecastUrl(lat,lng,fromDate,toDate){
   return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
     +`&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code`
     +`&timezone=Asia%2FTokyo&start_date=${fromDate}&end_date=${toDate}&past_days=0`;
@@ -503,11 +502,8 @@ function tideType(moonAge){
   return '中潮';
 }
 
-/* ---------- API fetch: Weather (hourly → aggregate 6-9 JST, Archive/Forecast auto-switch) ---------- */
-async function fetchWeatherForStation(station,fromDate,toDate){
-  const url=weatherApiUrl(station.lat,station.lng,fromDate,toDate);
-  const res=await fetchWithRetry(url);
-  const json=await res.json();
+/* ---------- 天気API レスポンスを日別集計して返すヘルパ ---------- */
+function parseWeatherJson(json){
   const h=json.hourly;
   if(!h||!h.time)return {};
   const dataKeys=['temperature_2m','wind_speed_10m','wind_direction_10m','precipitation','weather_code'];
@@ -517,8 +513,6 @@ async function fetchWeatherForStation(station,fromDate,toDate){
   const result={};
   for(const [dateStr,entries] of Object.entries(byDate)){
     const temps=entries.map(e=>e.temperature_2m).filter(v=>v!=null);
-    const winds=entries.map(e=>e.wind_speed_10m).filter(v=>v!=null);
-    const windDirs=entries.map(e=>e.wind_direction_10m).filter(v=>v!=null);
     const precips=entries.map(e=>e.precipitation).filter(v=>v!=null);
     const codes=entries.map(e=>e.weather_code).filter(v=>v!=null);
     let maxWind=null,maxWindDir=null;
@@ -539,6 +533,40 @@ async function fetchWeatherForStation(station,fromDate,toDate){
       天気:codes.length?weatherDesc(Math.max(...codes)):''
     };
   }
+  return result;
+}
+
+/* ---------- API fetch: Weather (archive / forecast を境界で分割して両方取る) ---------- */
+async function fetchWeatherForStation(station,fromDate,toDate){
+  const fiveDaysAgo=addDays(today(),-5);
+  const result={};
+
+  /* ① アーカイブ区間 */
+  if(fromDate<=fiveDaysAgo){
+    const arcEnd=toDate<=fiveDaysAgo?toDate:fiveDaysAgo;
+    const url=weatherArchiveUrl(station.lat,station.lng,fromDate,arcEnd);
+    try{
+      const res=await fetchWithRetry(url);
+      const json=await res.json();
+      Object.assign(result,parseWeatherJson(json));
+    }catch(e){
+      console.warn(`archive 天気取得失敗 (${fromDate}〜${arcEnd}):`,e.message);
+    }
+  }
+
+  /* ② フォアキャスト区間 */
+  if(toDate>fiveDaysAgo){
+    const fcStart=fromDate>fiveDaysAgo?fromDate:addDays(fiveDaysAgo,1);
+    const url=weatherForecastUrl(station.lat,station.lng,fcStart,toDate);
+    try{
+      const res=await fetchWithRetry(url);
+      const json=await res.json();
+      Object.assign(result,parseWeatherJson(json));
+    }catch(e){
+      console.warn(`forecast 天気取得失敗 (${fcStart}〜${toDate}):`,e.message);
+    }
+  }
+
   return result;
 }
 

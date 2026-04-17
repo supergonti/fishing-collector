@@ -50,15 +50,16 @@ function chunkDateRange(fromDate, toDate, chunkSize) {
 }
 
 // ─── API URL ─────────────────────────────────────────────────────
-function weatherApiUrl(lat, lng, fromDate, toDate) {
-  const fiveDaysAgo = addDays(today(), -5);
-  if (toDate <= fiveDaysAgo) {
-    // 全期間がアーカイブ範囲
-    return `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}`
-      + `&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code`
-      + `&timezone=Asia%2FTokyo&start_date=${fromDate}&end_date=${toDate}`;
-  }
-  // 直近はForecast API
+// ※ Open-Meteo archive-api は 5日前までの過去データが揃う
+//    forecast-api は当日前後のみ返すため、両者を混在する範囲で一本化すると
+//    片方のデータが欠落する（2025-12-11〜2026-04-16 のような長期欠損原因）。
+//    必ず境界で分割して個別に呼ぶこと。
+function weatherArchiveUrl(lat, lng, fromDate, toDate) {
+  return `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lng}`
+    + `&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code`
+    + `&timezone=Asia%2FTokyo&start_date=${fromDate}&end_date=${toDate}`;
+}
+function weatherForecastUrl(lat, lng, fromDate, toDate) {
   return `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`
     + `&hourly=temperature_2m,wind_speed_10m,wind_direction_10m,precipitation,weather_code`
     + `&timezone=Asia%2FTokyo&start_date=${fromDate}&end_date=${toDate}&past_days=0`;
@@ -170,19 +171,14 @@ function tideType(moonAge) {
   return '中潮';
 }
 
-// ─── API取得：天気 ────────────────────────────────────────────────
-async function fetchWeatherForStation(station, fromDate, toDate) {
-  const url = weatherApiUrl(station.lat, station.lng, fromDate, toDate);
-  const res  = await fetchWithRetry(url);
-  const json = await res.json();
-  const h    = json.hourly;
+// ─── 天気API レスポンスを日別集計して返すヘルパ ─────────────────
+function parseWeatherJson(json) {
+  const h = json.hourly;
   if (!h || !h.time) return {};
-
   const dataKeys   = ['temperature_2m','wind_speed_10m','wind_direction_10m','precipitation','weather_code'];
   const dataArrays = {};
   for (const k of dataKeys) dataArrays[k] = h[k] || [];
   const byDate = groupHourlyByDate(h.time, dataKeys, dataArrays);
-
   const result = {};
   for (const [dateStr, entries] of Object.entries(byDate)) {
     const temps   = entries.map(e => e.temperature_2m).filter(v => v != null);
@@ -206,6 +202,41 @@ async function fetchWeatherForStation(station, fromDate, toDate) {
       天気:       codes.length ? weatherDesc(Math.max(...codes)) : ''
     };
   }
+  return result;
+}
+
+// ─── API取得：天気（archive / forecast を境界で分割して両方取る） ──
+async function fetchWeatherForStation(station, fromDate, toDate) {
+  const fiveDaysAgo = addDays(today(), -5);
+  const result = {};
+
+  // ① アーカイブ区間 (fromDate 〜 min(toDate, fiveDaysAgo))
+  if (fromDate <= fiveDaysAgo) {
+    const arcEnd = toDate <= fiveDaysAgo ? toDate : fiveDaysAgo;
+    const url    = weatherArchiveUrl(station.lat, station.lng, fromDate, arcEnd);
+    try {
+      const res  = await fetchWithRetry(url);
+      const json = await res.json();
+      Object.assign(result, parseWeatherJson(json));
+    } catch (e) {
+      console.warn(`    ⚠ archive 天気取得失敗 (${fromDate}〜${arcEnd}): ${e.message}`);
+    }
+    await new Promise(r => setTimeout(r, API_DELAY));
+  }
+
+  // ② フォアキャスト区間 (max(fromDate, fiveDaysAgo+1) 〜 toDate)
+  if (toDate > fiveDaysAgo) {
+    const fcStart = fromDate > fiveDaysAgo ? fromDate : addDays(fiveDaysAgo, 1);
+    const url     = weatherForecastUrl(station.lat, station.lng, fcStart, toDate);
+    try {
+      const res  = await fetchWithRetry(url);
+      const json = await res.json();
+      Object.assign(result, parseWeatherJson(json));
+    } catch (e) {
+      console.warn(`    ⚠ forecast 天気取得失敗 (${fcStart}〜${toDate}): ${e.message}`);
+    }
+  }
+
   return result;
 }
 
@@ -272,6 +303,7 @@ async function fetchWaterTempForStation(station, fromDate, toDate) {
 // ─── CSV 読み書き ─────────────────────────────────────────────────
 const CSV_HEADER = '日付,地点名,観測地点名,県,緯度,経度,気温_平均,気温_最高,気温_最低,風速_最大,風向,降水量,天気コード,天気,水温,最大波高,波向,波周期,潮汐,月齢,月相';
 
+// 全地点共通の最新日（従来ロジック互換、主に初期化用）
 function readLatestDate() {
   if (!fs.existsSync(CSV_FILE)) return DEFAULT_START_DATE;
   const lines = fs.readFileSync(CSV_FILE, 'utf8').replace(/^\uFEFF/, '').trim().split('\n').filter(l => l.trim());
@@ -282,6 +314,21 @@ function readLatestDate() {
     if (date && date > latest) latest = date;
   }
   return latest;
+}
+
+// 地点ごとの最新日。ある地点が前回途中失敗していても欠損を取り直す。
+function readLatestDateByStation() {
+  const map = {};
+  if (!fs.existsSync(CSV_FILE)) return map;
+  const lines = fs.readFileSync(CSV_FILE, 'utf8').replace(/^\uFEFF/, '').trim().split('\n').filter(l => l.trim());
+  if (lines.length <= 1) return map;
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',');
+    const date = cols[0], station = cols[1];
+    if (!date || !station) continue;
+    if (!map[station] || date > map[station]) map[station] = date;
+  }
+  return map;
 }
 
 function readExistingKeys() {
@@ -331,24 +378,24 @@ async function main() {
   console.log(`  実行日時: ${new Date().toISOString()}`);
   console.log('==========================================================');
 
-  const latestDate = readLatestDate();
-  const fromDate   = addDays(latestDate, 1);
-  const toDate     = addDays(today(), -1); // APIの安定性のため前日まで
+  const latestByStation = readLatestDateByStation();
+  const toDate = addDays(today(), -1); // APIの安定性のため前日まで
 
-  console.log(`既存データ最新日: ${latestDate}`);
-  console.log(`取得範囲        : ${fromDate} 〜 ${toDate}`);
-
-  if (fromDate > toDate) {
-    console.log('\n✅ データは既に最新です。更新不要。');
-    return;
-  }
+  console.log(`取得上限日      : ${toDate}`);
+  console.log(`地点別最新日    : ${JSON.stringify(latestByStation)}`);
 
   const existingKeys = readExistingKeys();
   const newRows      = [];
 
   for (const station of STATIONS) {
-    console.log(`\n📍 ${station.name} (${station.pref})`);
-    const chunks = chunkDateRange(fromDate, toDate, CHUNK_DAYS);
+    const stationLatest = latestByStation[station.name] || DEFAULT_START_DATE;
+    const stationFrom   = addDays(stationLatest, 1);
+    if (stationFrom > toDate) {
+      console.log(`\n📍 ${station.name} (${station.pref}) — 既に最新 (${stationLatest})、スキップ`);
+      continue;
+    }
+    console.log(`\n📍 ${station.name} (${station.pref}) — 取得範囲: ${stationFrom} 〜 ${toDate}`);
+    const chunks = chunkDateRange(stationFrom, toDate, CHUNK_DAYS);
 
     for (const chunk of chunks) {
       console.log(`  チャンク: ${chunk.from} 〜 ${chunk.to}`);
