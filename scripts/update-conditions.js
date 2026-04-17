@@ -342,6 +342,40 @@ function readExistingKeys() {
   return existing;
 }
 
+// 地点ごとに既存日付のSetを返す
+function readExistingDatesByStation() {
+  const map = {};
+  if (!fs.existsSync(CSV_FILE)) return map;
+  const lines = fs.readFileSync(CSV_FILE, 'utf8').replace(/^\uFEFF/, '').trim().split('\n').filter(l => l.trim());
+  for (let i = 1; i < lines.length; i++) {
+    const cols = lines[i].split(',');
+    const date = cols[0], station = cols[1];
+    if (!date || !station) continue;
+    if (!map[station]) map[station] = new Set();
+    map[station].add(date);
+  }
+  return map;
+}
+
+// 連続日付を CHUNK_DAYS 以内のブロックにまとめる
+// 入力: ソート済みの日付配列。出力: [{from, to}] の配列
+function groupContiguous(sortedDates, maxDays) {
+  if (sortedDates.length === 0) return [];
+  const chunks = [];
+  let start = sortedDates[0], end = sortedDates[0], count = 1;
+  for (let i = 1; i < sortedDates.length; i++) {
+    const expectedNext = addDays(end, 1);
+    if (sortedDates[i] === expectedNext && count < maxDays) {
+      end = sortedDates[i]; count++;
+    } else {
+      chunks.push({ from: start, to: end });
+      start = sortedDates[i]; end = sortedDates[i]; count = 1;
+    }
+  }
+  chunks.push({ from: start, to: end });
+  return chunks;
+}
+
 function appendToCSV(rows) {
   if (rows.length === 0) return;
   if (!fs.existsSync(CSV_FILE)) {
@@ -378,24 +412,36 @@ async function main() {
   console.log(`  実行日時: ${new Date().toISOString()}`);
   console.log('==========================================================');
 
-  const latestByStation = readLatestDateByStation();
+  const existingByStation = readExistingDatesByStation();
   const toDate = addDays(today(), -1); // APIの安定性のため前日まで
 
   console.log(`取得上限日      : ${toDate}`);
-  console.log(`地点別最新日    : ${JSON.stringify(latestByStation)}`);
+  console.log(`地点別既存日数  : ${Object.entries(existingByStation).map(([k,v])=>`${k}=${v.size}`).join(', ')}`);
 
   const existingKeys = readExistingKeys();
   const newRows      = [];
 
   for (const station of STATIONS) {
-    const stationLatest = latestByStation[station.name] || DEFAULT_START_DATE;
-    const stationFrom   = addDays(stationLatest, 1);
-    if (stationFrom > toDate) {
-      console.log(`\n📍 ${station.name} (${station.pref}) — 既に最新 (${stationLatest})、スキップ`);
+    const existing = existingByStation[station.name] || new Set();
+    // その地点が DB に初登場した日を基準にし、以降の欠損日のみ取得する
+    let earliest = DEFAULT_START_DATE;
+    if (existing.size > 0) {
+      earliest = [...existing].sort()[0];
+    }
+    // earliest 〜 toDate の全日付から実在する日を引いて欠損日リストを作る
+    const missing = [];
+    let cur = earliest;
+    while (cur <= toDate) {
+      if (!existing.has(cur)) missing.push(cur);
+      cur = addDays(cur, 1);
+    }
+    if (missing.length === 0) {
+      console.log(`\n📍 ${station.name} (${station.pref}) — 欠損なし、スキップ`);
       continue;
     }
-    console.log(`\n📍 ${station.name} (${station.pref}) — 取得範囲: ${stationFrom} 〜 ${toDate}`);
-    const chunks = chunkDateRange(stationFrom, toDate, CHUNK_DAYS);
+    console.log(`\n📍 ${station.name} (${station.pref}) — 欠損 ${missing.length}日分 (${missing[0]} 〜 ${missing[missing.length-1]})`);
+    const chunks = groupContiguous(missing, CHUNK_DAYS);
+    console.log(`  チャンク数: ${chunks.length}`);
 
     for (const chunk of chunks) {
       console.log(`  チャンク: ${chunk.from} 〜 ${chunk.to}`);
