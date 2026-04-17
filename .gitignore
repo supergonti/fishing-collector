@@ -45,3 +45,8 @@ venv/
 
 # --- ログ ---
 *.log
+
+# ========== セキュリティ必須パターン（scan_3layer.sh 準拠） ==========
+*credentials*
+*.key
+*.pem

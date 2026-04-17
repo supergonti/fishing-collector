@@ -437,15 +437,17 @@ function toNum(v){if(v===''||v===null||v===undefined)return '';const n=parseFloa
 function dv(v){return(v!==''&&v!==null&&v!==undefined)?v:'—';}
 
 // ===== 観測地点マスタ（8地点 / 四国沿岸） =====
+// ※ 気象DB (fishing_condition_db.csv) と結合するため、地点名は短名で統一する
+//   （update-conditions.js / merge-data.js と同じ命名・座標）
 const STATIONS=[
-  {name:'室戸岬沖',lat:33.26,lng:134.18},
-  {name:'高知市沖',lat:33.56,lng:133.53},
-  {name:'足摺岬沖',lat:32.78,lng:132.97},
-  {name:'宇和島沖',lat:33.22,lng:132.56},
-  {name:'松山沖',  lat:33.84,lng:132.77},
-  {name:'来島海峡',lat:34.07,lng:133.00},
-  {name:'高松沖',  lat:34.34,lng:134.05},
-  {name:'阿南市沖',lat:34.07,lng:134.56},
+  {name:'室戸',  lat:33.29,lng:134.18},
+  {name:'高知',  lat:33.56,lng:133.54},
+  {name:'足摺',  lat:32.72,lng:132.72},
+  {name:'宇和島',lat:33.22,lng:132.56},
+  {name:'松山',  lat:33.84,lng:132.77},
+  {name:'来島',  lat:34.12,lng:132.99},
+  {name:'高松',  lat:34.35,lng:134.05},
+  {name:'阿南',  lat:33.92,lng:134.66},
 ];
 const MAX_DIST_KM=300;
 
